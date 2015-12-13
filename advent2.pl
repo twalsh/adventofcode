@@ -12,14 +12,11 @@ sub get_paper (@dimensions){
 	my ($l,$w,$h) = @dimensions;
 	return 2 * ( $l*$w + $w*$h + $h*$l) + [*] min(@dimensions);
 }
-my $total_paper = 0;
-my $total_ribbon = 0;
 
-for 'input2.txt'.IO.lines -> $line {
-	my @dimensions = $line.split('x');
-	$total_paper += get_paper(@dimensions);
-	$total_ribbon += get_ribbon(@dimensions);
-}
+my @dimensions = 'input2.txt'.IO.lines.map({ .split('x') }); 
+
+my $total_paper = [+] @dimensions.map(&get_paper);
+my $total_ribbon = [+] @dimensions.map(&get_ribbon);
 
 say $total_paper;
 say $total_ribbon;
