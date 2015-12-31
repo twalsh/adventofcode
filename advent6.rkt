@@ -21,12 +21,20 @@
      (list (car fields) (caddr fields))
      )
     )))
-  (let ((fields (string-split line)))
-   (if (string=? (car fields) "toggle")
-       (list toggle (coord (cdr fields)))
-       (if (string=? (cadr fields) "on")
-           (list turn-on  (coord (cddr fields)))
-           (list turn-off (coord (cddr fields)))))))
+  (display line)(newline)
+  (match-let
+      (((pregexp "^(toggle|turn (on|off)) (\\d+),(\\d+) through (\\d+),(\\d+)"
+                (list _ instr on/off x0 y0 x1 y1)) line))
+    instr))
+   ; (let ((coords (map string->number (list x0 y0 x1 y1)))
+    
+;  #;(let ((fields (string-split line)))
+ ;  (if (string=? (car fields) "toggle")
+  ;;     (list toggle (coord (cdr fields)))
+    ;;   (if (string=? (cadr fields) "on")
+      ;;     (list turn-on  (coord (cddr fields)))
+        ;   (list turn-off (coord (cddr fields)))))))
+
                
 (for ((order (map process-line lines)))
   (match-let (((list proc (list x0 y0 x1 y1)) order))
