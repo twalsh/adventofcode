@@ -25,6 +25,8 @@
                      (lambda (s) (map string->number (string-split s "x"))) 
                      (call-with-input-file "input2.txt" read-lines)))
 
-(for/sum ((p (map get-paper dimensions))) p)
-(for/sum ((p (map get-ribbon dimensions))) p)
+(printf "Total square feet of wrapping paper: ~s~n"
+        (apply + (map get-paper dimensions)))
+(printf "Total feet of ribbon: ~s~n"
+        (apply + (map get-ribbon dimensions)))
 
