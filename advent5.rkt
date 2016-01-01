@@ -34,7 +34,7 @@
     'expected-rules-output 
     (vector (vector #t #f) (vector #f #t))
     )
-  ))
+   ))
 
 (define (rule-filter ruleset)
   (let ((rules (hash-ref ruleset 'rules)))
@@ -46,22 +46,21 @@
         (naughty-s (hash-ref ruleset 'naughty))
         (nice-s (hash-ref ruleset 'nice))
         (expected-rules-output (hash-ref ruleset 'expected-rules-output)))
-    (let ((rule (lambda (i) (cdr (list-ref rules (- i 1))))))
-      (for ((i (range (length rules))))
-        (let ((rule (list-ref rules i)))
-          (let ((expected (vector-ref expected-rules-output i)))
-            (for ((j (range (vector-length naughty-s))))
-              (let ((s (vector-ref naughty-s j)))
-                (check-equal? 
-                 ((cdr rule) s) 
-                 (vector-ref expected j) 
-                 (format "~s ~s" s (car rule))
-                 )
-                )))))
-      
-      (for ((s nice-s))
-        (check-equal? ((rule-filter ruleset) s) #t s))
-      )))
+    (for ((i (range (length rules))))
+      (let ((rule (list-ref rules i))
+            (expected (vector-ref expected-rules-output i)))
+        (for ((j (range (vector-length naughty-s))))
+          (let ((s (vector-ref naughty-s j)))
+            (check-equal? 
+             ((cdr rule) s) 
+             (vector-ref expected j) 
+             (format "~s ~s" s (car rule))
+             )
+            ))))
+    
+    (for ((s nice-s))
+      (check-equal? ((rule-filter ruleset) s) #t s))
+    ))
 
 (define lines (call-with-input-file "input5.txt" read-lines))
 (check-ruleset (first rulesets))
