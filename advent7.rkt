@@ -2,36 +2,48 @@
 
 (require rnrs/arithmetic/bitwise-6)
 
-(provide process wire wire-set! line-destruct wire-ref)
+(provide process wire wire-set! line-destruct wire-ref do-part-one)
 
 (define wire (make-hash))
 
 (define (wire-ref w)
-  (hash-ref wire w))
+  (hash-ref wire w 0))
 
 (define (wire-set! w signal)
   (hash-set! wire w signal))
 
-(define instr-regex #px"(?:(NOT) )?(\\w+)(?: (AND|OR|LSHIFT|RSHIFT) (\\w+))? -> (\\w)")
+(define instr-regex #px"(?:(NOT) )?(\\w+)(?: (AND|OR|LSHIFT|RSHIFT) (\\w+))? -> (\\w+)")
 
 ; De-struct a line into a list using the instr-regex
 (define (line-destruct l)
   (cdr (regexp-match instr-regex l)))
 
+(define (param->value p)
+  (match p
+    ((pregexp "\\d+") (string->number p))
+    ((pregexp "[a-z]+") (wire-ref p))
+    (#f p)
+    ))
+
 (define (process line)
-  (match-let (((pregexp instr-regex (list _ :not sig1 op sig2 w)) line))
-    (let ((signal
-           ; If NOT x, signal is bitwise complement of sig1
-           (if :not
-               (+ 65536 (bitwise-not (wire-ref sig1)))
-               ; If op is set, then both sig1 and sig2 must be set
-               (if op
-                   (match op
-                     ("AND" (bitwise-and (wire-ref sig1) (wire-ref sig2)))
-                     ("OR" (bitwise-ior   (wire-ref sig1) (wire-ref sig2)))
-                     ("LSHIFT" (bitwise-arithmetic-shift-left (wire-ref sig1) (string->number sig2)))
-                     ("RSHIFT" (bitwise-arithmetic-shift-right (wire-ref sig1) (string->number sig2)))
-                     )
-                   ; else input is value of sig1
-                   (string->number sig1)))))
-      (wire-set! w signal))))
+  (match-let (((pregexp instr-regex (list _ :not p1 op p2 w)) line))
+    (let* ((v1 (param->value p1))
+           (v2 (param->value p2))
+           (signal
+            (if :not
+                (+ 65536 (bitwise-not v1))
+                (if op
+                    (match op
+                      ("AND" (bitwise-and v1 v2))
+                      ("OR" (bitwise-ior v1 v2))
+                      ("LSHIFT" (bitwise-arithmetic-shift-left v1 v2))
+                      ("RSHIFT" (bitwise-arithmetic-shift-right v1 v2))
+                      )
+                    ; else input is value of sig1
+                    v1))))
+           (wire-set! w signal))))
+
+(define (do-part-one lines)
+  (for ((line lines))
+    (process line))
+  wire)
