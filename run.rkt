@@ -1,11 +1,14 @@
 #lang racket
 
+(require rackunit)
 (require "advent-utils.rkt")
 (require "advent7.rkt")
 
 (define input-file "input7.txt")
 (define lines (call-with-input-file input-file read-lines))
 
-(do-part-one lines)
+(define part-one (do-part-one lines))
 
-wire
+(printf "Part One ~s~n" part-one)
+(check-equal? part-one 956)
+ 
