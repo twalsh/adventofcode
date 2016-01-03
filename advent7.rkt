@@ -12,7 +12,6 @@
   (if (hash-has-key? wire w)
       (hash-ref wire w)
    ; If the wire has not been defined, run the instruction for it
-   ;(instr->wire (hash-ref instr-table w))
       (instr->wire (hash-ref instr-table w))))      
 
 (define (wire-set! w signal)
@@ -42,8 +41,6 @@
 
 ; Parse instruction for a wire and store value in the wire table
 (define (instr->wire i)
-  (when (= (remainder (hash-count wire) 10) 0)
-    (printf "~s ~s~n" (hash-count wire) i))
   (let* ((v1 (param->value (instr-p1 i)))
          (v2 (param->value (instr-p2 i)))
          (op (instr-op i))
@@ -74,6 +71,6 @@
 (define (do-part-one lines)
   (for ((line lines))
     (make-instr-table line))
-  (display (hash-count instr-table))(newline)
   (process)
+  (wire-ref "a")
   )
