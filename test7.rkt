@@ -37,5 +37,4 @@
 (process "NOT y -> i")
 (check-equal? (wire-ref "i") 65079)
 
-wire
 
