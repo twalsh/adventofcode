@@ -1,36 +1,27 @@
 #lang racket
 
-; Advent Day 12
 (require "advent-utils.rkt")
 
-(define lines (read-input "input12.txt"))
+(provide make-edge make-graph path-weight)
 
-(define (make-edges lines string->edge)
-  (map string->edge lines))
+(define (make-edge node1 node2 weight)
+    (cons (list node1 node2) weight))
 
 (define (make-graph edges)
-  (let ((graph (make-hash edges)))
-    (for ((k (hash-keys graph)))
-      (let ((l (cons (cdr k) (car k))))
-        (hash-set! graph l (hash-ref graph k))))
-    graph))
+  (make-hash edges))
 
-(define (graph-vertices graph) (remove-duplicates (flatten (hash-keys graph))))
+(define (graph-nodes graph) (remove-duplicates (flatten (hash-keys graph))))
 
-(define (path-value graph)
+(define (path-weight graph)
   (lambda (path)
-    (for/sum ((i (in-range (sub1 (vector-length path)))))
-      (hash-ref graph (cons (vector-ref path i)
-                            (vector-ref path (add1 i)))))))
+  (for/sum ((i (in-range (sub1 (vector-length path)))))
+    (let ((edge (list (vector-ref path i)
+                      (vector-ref path (add1 i)))))
+      (if (hash-has-key? graph edge)
+          (hash-ref graph edge)
+          (hash-ref graph (reverse edge)))))))
 
 (define (graph-paths graph)
   (map list->vector
-       (permutations (graph-vertices graph))))
+       (permutations (graph-nodes graph))))
 
-(define (path-values graph)
-  (map (path-value graph) graph-paths))
-
-; Part One
-(printf "Shortest route: ~s~n" (apply min (path-values graph)))
-; Part Two
-(printf "Longest route: ~s~n" (apply max (path-value graphs)))
