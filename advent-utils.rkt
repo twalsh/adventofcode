@@ -1,6 +1,9 @@
 #lang racket
 
-(provide read-lines)
+(provide read-lines read-input)
+
+(define (read-input file)
+  (read-lines (open-input-file file)))
 
 (define (read-lines in)
   (let loop ((lines '()))
