@@ -1,31 +1,27 @@
 #lang racket
 
 ; Advent Day 9
+(require "advent-graph.rkt")
 (require "advent-utils.rkt")
 
 (define lines (read-input "input9.txt"))
 
-(define (string->distance s)
+(define (string->edge s)
   (match-let
       (((list city1 _ city2 _ distance) (string-split s " ")))
-    (cons (cons city1 city2) distance)))
+    (make-edge city1 city2 (string->number distance))))
 
-(define distances (make-hash (map
-                              (lambda (p) (cons (car p) (string->number (cdr p))))
-                              (map string->distance lines))))
+(define edges (map string->edge lines))
 
-(for ((k (hash-keys distances)))
-  (let ((l (cons (cdr k) (car k))))
-    (hash-set! distances l (hash-ref distances k))))
+(define distances (make-graph edges))
 
 (define cities (remove-duplicates (flatten (hash-keys distances))))
 
-(define (route->dist route)
-  (for/sum ((i (in-range (sub1 (vector-length route)))))
-    (hash-ref distances (cons (vector-ref route i)
-                              (vector-ref route (add1 i))))))
+(define pop
+  (map list->vector
+       (permutations cities)))
 
-(define pop (map list->vector (permutations cities)))
+(define route->dist (path-weight distances))
 
 ; Part One
 (printf "Shortest route: ~s~n" (apply min (map route->dist pop)))
