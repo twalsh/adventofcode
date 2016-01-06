@@ -13,7 +13,7 @@
   (map list->vector
        (permutations (graph-nodes distances))))
 
-(define route->dist (path-weight distances))
+(define route->dist (path-sum distances))
 
 ; Part One
 (printf "Shortest route: ~s~n" (apply min (map route->dist pop)))
