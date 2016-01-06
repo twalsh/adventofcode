@@ -2,7 +2,7 @@
 
 (require "advent-utils.rkt")
 
-(provide make-edge make-graph path-weight)
+(provide make-edge make-graph path-weight graph-nodes string->edge)
 
 (define (make-edge node1 node2 weight)
     (cons (list node1 node2) weight))
@@ -24,4 +24,12 @@
 (define (graph-paths graph)
   (map list->vector
        (permutations (graph-nodes graph))))
+
+(define (string->edge f)
+  (lambda (s)
+    (let* ((fields (string-split s " "))
+           (node1 (list-ref fields (first f)))
+           (node2 (list-ref fields (second f)))
+           (weight (string->number (list-ref fields (third f)))))
+      (make-edge node1 node2 weight))))
 
