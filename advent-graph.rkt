@@ -25,11 +25,11 @@
   (map list->vector
        (permutations (graph-nodes graph))))
 
-(define (string->edge f)
+(define (string->edge f1 f2 f3)
   (lambda (s)
     (let* ((fields (string-split s " "))
-           (node1 (list-ref fields (first f)))
-           (node2 (list-ref fields (second f)))
-           (weight (string->number (list-ref fields (third f)))))
+           (node1 (list-ref fields f1))
+           (node2 (list-ref fields f2))
+           (weight (string->number (list-ref fields f3))))
       (make-edge node1 node2 weight))))
 

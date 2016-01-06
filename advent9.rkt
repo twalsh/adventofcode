@@ -6,7 +6,7 @@
 
 (define lines (read-input "input9.txt"))
 
-(define edges (map (string->edge '(0 2 4)) lines))
+(define edges (map (string->edge 0 2 4) lines))
 (define distances (make-graph edges))
 
 (define pop
