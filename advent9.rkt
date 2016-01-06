@@ -6,20 +6,12 @@
 
 (define lines (read-input "input9.txt"))
 
-(define (string->edge s)
-  (match-let
-      (((list city1 _ city2 _ distance) (string-split s " ")))
-    (make-edge city1 city2 (string->number distance))))
-
-(define edges (map string->edge lines))
-
+(define edges (map (string->edge '(0 2 4)) lines))
 (define distances (make-graph edges))
-
-(define cities (remove-duplicates (flatten (hash-keys distances))))
 
 (define pop
   (map list->vector
-       (permutations cities)))
+       (permutations (graph-nodes distances))))
 
 (define route->dist (path-weight distances))
 
