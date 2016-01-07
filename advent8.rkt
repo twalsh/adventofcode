@@ -11,6 +11,12 @@ test-strings
 
 (map string-length test-strings)
 
-(map (lambda (s) (regexp-match #px"\\\\" s)) test-strings)
+(define (strlen s)
+  (+ (string-length s)
+   (length (or (regexp-match #px"\\\\" s) '()))
+   (length (or (regexp-match #px"\"" s) '()))))
 
-(map (lambda (s) (regexp-match #px"\"" s)) test-strings)
+(map strlen test-strings)
+
+(define (total-chars los)
+  (+ map string-length los))
