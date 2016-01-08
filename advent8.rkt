@@ -3,43 +3,33 @@
 (require rackunit)
 (require "advent-utils.rkt")
 
-;(define (read-lines in)
-;  (let loop ((lines '()))
-;    (let ((line (read-bytes-line in)))
-;      (if (eof-object? line)
-;        (reverse lines)
-;        (loop (cons line lines))))))
+(define (read-lines in)
+  (let loop ((lines '()))
+    (let ((line (read-bytes-line in)))
+      (if (eof-object? line)
+        (reverse lines)
+        (loop (cons line lines))))))
 
 (define lines (call-with-input-file "input8.txt" read-lines))
 
 (define test-strings (list "\"\"" "\"abc\"" "\"aaa\"aaa\"" "\"\x27\""))
 
-test-strings
+(define (strlen bs)
+  (let loop ((s (rest (bytes->list bs))) (l 0))
+    (if (empty? s)
+        (- l 1)
+        (match s
+          ((list 92 34 ...) (loop (drop s 2) (+ l 1)))
+          ((list 92 120 _ _ ...) (loop (drop s 4) (+ l 1)))
+          ((list 92 92 ...) (loop (drop s 2) (+ l 1)))
+          ((list 34 ..1) (loop (rest s) (+ l 1)))
+          (_ (loop (rest s) (+ l 1)))))))
 
-(map string-length test-strings)
+(for ((line lines))
+  (printf "~s ~s ~s~n" line (strlen line) (bytes-length line)))
 
-(define (strlen s)
-  (- (string-length s) 2))
-   ;(length (or (regexp-match #px"\\" s) '()))
-   ;(length (or (regexp-match #px"\"" s) '()))))
+(define strlens (apply + (map strlen lines)))
+(define bytelens (apply + (map bytes-length lines)))
 
-(define (strlen2 s)
-  (+ (string-length s)
-     (length (or (regexp-match* #px"\\\\" s) empty))
-     (- (length (or (regexp-match* #px"\"" s) empty)) 2)))
+(- strlens bytelens)
 
-(map strlen test-strings)
-(map strlen2 test-strings)
-
-(define (total-chars-mem ts)
-  (apply + (map strlen ts)))
-
-(define (total-chars-str ts) 
-  (apply + (map strlen2 ts)))
-
-(printf "total-chars-str: ~s~n" (total-chars-str lines))
-(printf "total-chars-mem: ~s~n" (total-chars-mem lines))
-
-(define (diff s) (- (total-chars-str s) (total-chars-mem s)))
-
-(printf "~s~n" (diff lines))
