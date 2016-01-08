@@ -13,15 +13,18 @@
 (define lines (call-with-input-file "input8.txt" read-lines))
 
 (define (strlen bs)
-  (let loop ((s (bytes->list bs)) (l 0))
+  (let loop ((s (bytes->list bs)) (len 0))
     (if (empty? s)
-        (- l 2)
-        (match s
-          ((list 92 34 _ ...) (loop (drop s 2) (+ l 1)))
-          ((list 92 120 _ _ ...) (loop (drop s 4) (+ l 1)))
-          ((list 92 92 _ ...) (loop (drop s 2) (+ l 1)))
-          ((list 34 ..1) (loop (rest s) (+ l 1)))
-          (_ (loop (rest s) (+ l 1)))))))
+        len
+        (if (= (car s) 34)
+            (loop (rest s) len)
+            (let ((char-len
+                   (match s
+                     ((list 92 34 _ ...) 2)
+                     ((list 92 120 _ _ ...) 4)
+                     ((list 92 92 _ ...) 2) 
+                     (_ 1))))
+              (loop (drop s char-len) (add1 len)))))))
 
 (define strlens (apply + (map strlen lines)))
 (define bytelens (apply + (map bytes-length lines)))
