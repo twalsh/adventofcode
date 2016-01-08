@@ -12,7 +12,7 @@
 
 (define lines (call-with-input-file "input8.txt" read-lines))
 
-(define (strlen bs)
+(define (char-length bs)
   (let loop ((s (bytes->list bs)) (len 0))
     (if (empty? s)
         len
@@ -26,11 +26,21 @@
                      (_ 1))))
               (loop (drop s char-len) (add1 len)))))))
 
-(define strlens (apply + (map strlen lines)))
-(define bytelens (apply + (map bytes-length lines)))
+(define total-char-length (apply + (map char-length lines)))
+(define total-byte-length (apply + (map bytes-length lines)))
 
-(define part-one (- bytelens strlens))
-
+(define part-one (- total-byte-length total-char-length))
 (printf "Day 8. Part One: ~s~n" part-one)
 (check-equal? part-one 1342)
 
+(define (encode-length bs)
+  (+ 2 (for/sum ((b (bytes->list bs)))
+    (if (member b '(34 92))
+        2
+        1))))
+
+(define total-encode-length (apply + (map encode-length lines)))
+
+(define part-two (- total-encode-length total-byte-length))
+(printf "Day 8. Part Two: ~s~n" part-two)
+(check-equal? part-two 2074)
