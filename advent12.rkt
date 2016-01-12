@@ -5,15 +5,23 @@
 
 (define input (with-input-from-file "input12.txt" (lambda () (read-json))))
 
-(define (sum-js in)
-  (apply + (flatten (cond ((list? in) (map sum-js in))
-        ((hash? in) (map sum-js (hash-values in)))
-        (else
-         (if (number? in)
-             in
-             '()))))))
+(define (sum-js [ pred? (lambda (h) #t) ])
+  (define (fn in)
+    (apply +
+           (flatten
+            (cond ((list? in) (map fn in))
+                  ((and (hash? in) (pred? in))
+                   (map fn (hash-values in)))
+                  (else
+                   (if (number? in)
+                       in
+                       '()))))))
+  fn)
 
-(define part-one (sum-js input))
-
+(define part-one ((sum-js) input))
 (printf "Day 12. Part One: ~s~n" part-one)
 (check-equal? part-one 156366)
+
+(define part-two ((sum-js (lambda (h) (not (member "red" (hash-values h))))) input))
+(printf "Day 12. Part Two: ~s~n" part-two)
+(check-equal? part-two 96852)
