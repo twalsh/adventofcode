@@ -20,6 +20,10 @@
                     (cons ft (loop fp (add1 t) ft 'flying 0))
                     (cons ft (loop fp (add1 t) ft 'resting (add1 state-time))))))))))
 
+(define (distances d path)
+  (for/list ((p path))
+    (* (deer-speed d) p)))
+
 (define (distance travel-time)
   (lambda (d)
     (* (deer-speed d)
@@ -37,12 +41,15 @@
 (printf "Day 14. Part One: ~s~n" part-one)
 (check-equal? part-one 2640)
 
-(define paths (map (flight-path 140) dl))
+(define paths (map (lambda (d)
+                     (distances d ((flight-path 1000) d))) dl))
 
+(printf "~s~n" paths)
 (map length paths)
 
 (for/fold ((score1 0) (score2 0))
   ((f1 (car paths)) (f2 (cadr paths)))
+  (printf "COMP C ~s ~s : D ~s ~s~n" f1 score1 f2 score2)
   (cond ((> f1 f2)
          (values (add1 score1) score2))
         ((< f1 f2)
