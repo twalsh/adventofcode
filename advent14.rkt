@@ -3,23 +3,28 @@
 (require rackunit)
 
 (struct deer (speed range rest-time))
+; Flight point - total flying time, clock time, state (flying/resting)
+(struct fpoint (ftime time state))
 
+(define (make-fpoint fpoint)
+  (fpoint ftime time state))
+  
 (define (flight-path travel-time)
   (lambda (d)
     (let ((range (deer-range d)) (rest-time (deer-rest-time d)))
-      (let loop ((fp '())
-                 (t 0)
-                 (ft 0) (state 'flying) (state-time 0))
+      (let loop ((fpath '())
+                 (fpoint 0 0 'flying) (state-time 0))
         (if (= t travel-time)
-            fp
-            (if (eq? state 'flying)
-                (if (= state-time range)
-                    (cons ft (loop fp (add1 t) ft 'resting 0))
-                    (cons (add1 ft) (loop fp (add1 t) (add1 ft) 'flying (add1 state-time))))
-                (if (= state-time rest-time)
-                    (cons ft (loop fp (add1 t) ft 'flying 0))
-                    (cons ft (loop fp (add1 t) ft 'resting (add1 state-time))))))))))
-
+            fpath
+            (let ((fp (fpoint ft t state)))
+              (if (eq? state 'flying)
+                  (if (= state-time range)
+                      (cons fp (loop fpath (add1 t) ft 'resting 0))
+                      (cons (add1 ft) (loop fpath (add1 t) (add1 ft) 'flying (add1 state-time))))
+                  (if (= state-time rest-time)
+                      (cons fp (loop fpath (add1 t) ft 'flying 0))
+                      (cons fp (loop fpath (add1 t) ft 'resting (add1 state-time)))))))))))
+  
 (define (distances d path)
   (for/list ((p path))
     (* (deer-speed d) p)))
