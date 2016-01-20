@@ -13,10 +13,10 @@
                  (ft 0)
                  (state 'flying)
                  (state-time 0))
-;        (printf "~s ~s ~s ~s~n" t ft state-time state)
+        ;        (printf "~s ~s ~s ~s~n" t ft state-time state)
         (if (= t travel-time)
             fpath
-           
+            
             (if (eq? state 'flying)
                 (if (= state-time range)
                     (cons ft (loop fpath (add1 t) ft 'resting 1))
@@ -43,8 +43,8 @@
           (string->number speed)
           (string->number range)
           (string->number rest-time))))
-    
-  
+
+
 (define dl (map line->deer lines))
 
 ;((distance 1) (car dl))
@@ -53,28 +53,26 @@
 
 (define part-one (apply max (map (distance 2503) dl)))
 (printf "Day 14. Part One: ~s~n" part-one)
-;(check-equal? part-one 2640)
+(check-equal? part-one 2640)
 
 (define paths (map (lambda (d)
-                     (distances d ((flight-path 2503) d))) dl))
+                     
+                     (distances d ((flight-path 2503) d)))
+                   dl))
 
-(define score1 0)
-(define score2 0)
+(define wl
+  (let loop ((rp paths) (winners '()))
+    (if (empty? (car rp))
+        winners
+        (let* ((scores (map car rp))
+               (max-score (apply max scores)))
+          (define w
+            (filter (lambda (i)
+                      (= (list-ref scores i) max-score))
+                    (range (length dl))))
+          (loop (map rest rp) (cons w winners))))))
 
-(define p1 (car paths))
+(define part-two (apply max (for/list ((i (in-range (length dl))))
+                        (count (lambda (l) (member i l)) wl))))
 
-(and #f
-(for/list ((i (in-range (length (car paths)))))
-           (score1 0)
-           (score2 0))
-          ((f1 p1) (f2 p2))
-  (printf "COMP ~s C ~s ~s : D ~s ~s~n" i f1 score1 f2 score2)
-  (cond ((> f1 f2)
-         (values (add1 i) (add1 score1) score2))
-        ((< f1 f2)
-         (values (add1 i) score1 (add1 score2)))
-        (else
-         (values (add1 i) (add1 score1) (add1 score2))))))
-
-score1
-score2
+(printf "Day 14. Part Two: ~s~n" part-two)
