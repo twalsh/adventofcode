@@ -64,7 +64,7 @@
 (define p1 (car paths))
 
 (and #f
-(for/fold ((i 1)
+(for/list ((i (in-range (length (car paths)))))
            (score1 0)
            (score2 0))
           ((f1 p1) (f2 p2))
