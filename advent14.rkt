@@ -1,10 +1,9 @@
 #lang racket
 
 (require rackunit)
+(require "advent-utils.rkt")
 
-(struct deer (speed range rest-time))
-; Flight point - total flying time, clock time, state (flying/resting)
-(struct fpoint (ftime time state))
+(struct deer (name speed range rest-time) #:transparent)
 
 (define (flight-path travel-time)
   (lambda (d)
@@ -14,7 +13,7 @@
                  (ft 0)
                  (state 'flying)
                  (state-time 0))
-        (printf "~s ~s ~s ~s~n" t ft state-time state)
+;        (printf "~s ~s ~s ~s~n" t ft state-time state)
         (if (= t travel-time)
             fpath
            
@@ -35,8 +34,18 @@
     (* (deer-speed d)
        (last ((flight-path travel-time) d)))))
 
-(define dl (list (deer 14 10 127)
-                 (deer 16 11 162)))
+(define lines (read-input "input14.txt"))
+
+(define (line->deer line)
+  (match-let (((list name _ _ speed _ _ range _ ..6 rest-time _)
+               (string-split line " ")))
+    (deer name
+          (string->number speed)
+          (string->number range)
+          (string->number rest-time))))
+    
+  
+(define dl (map line->deer lines))
 
 ;((distance 1) (car dl))
 ;((distance 10) (car dl))
@@ -53,8 +62,8 @@
 (define score2 0)
 
 (define p1 (car paths))
-(define p2 (cadr paths))
 
+(and #f
 (for/fold ((i 1)
            (score1 0)
            (score2 0))
@@ -65,7 +74,7 @@
         ((< f1 f2)
          (values (add1 i) score1 (add1 score2)))
         (else
-         (values (add1 i) (add1 score1) (add1 score2)))))
+         (values (add1 i) (add1 score1) (add1 score2))))))
 
 score1
 score2
