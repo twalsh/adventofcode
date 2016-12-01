@@ -1,32 +1,37 @@
 #lang racket
 
+(require rackunit)
+
 (define test-directions (map (lambda (s) (string-split s  ", "))
-                               (list "R2, L3" "R2, R2, R2")))
+                             '("R2, L3"
+                               "R2, R2, R2"
+                               "R5, L5, R5, R3")))
 
-test-directions 
- 
-;    R     L     
-; N  +1,0,E  -1,0,S
-; S  -1,0,W   1,0
-; E  +1,0,S  -1,0
-; W  -1,0,N  +1,0
-
-(define (go moves [n-s 0] [e-w 0] [direction 1])
-  (printf "~a ~a~n" n-s e-w direction)
+(define (go moves [n-s 0] [e-w 0] [direction 'north])
   (if (empty? moves)
-      (cons (abs n-s) (abs e-w))
+      (+ (abs n-s) (abs e-w))
       (let ((next-move (first moves)))
-        (define next-direction
-          (if (eq? (string-ref next-move 0) #\R)
-              (if (= direction 1)
-                   1
-                   -1
-              (if (= direction 1)
-                  -1
-                  1))))
         (define distance (string->number (substring next-move 1)))
-        (printf "~a ~a ~a~n" next-move next-direction distance)
-        (go (rest moves) (+ x (* next-direction distance) next-direction)))))
+        (if (eq? (string-ref next-move 0) #\R)
+            (cond ((eq? direction 'north)
+                   (go (rest moves) n-s (+ e-w distance) 'east))
+                  ((eq? direction 'east)
+                   (go (rest moves) (+ n-s distance) e-w 'south))
+                  ((eq? direction 'south)
+                   (go (rest moves) n-s (- e-w distance) 'west))
+                  ((eq? direction 'west)
+                   (go (rest moves) (- n-s distance) e-w 'north)))
+            (cond ((eq? direction 'north)
+                   (go (rest moves) n-s (- e-w distance) 'west))
+                  ((eq? direction 'west)
+                   (go (rest moves) (+ n-s distance) e-w 'south))
+                  ((eq? direction 'south)
+                   (go (rest moves) n-s (+ e-w distance) 'east))
+                  ((eq? direction 'east)
+                   (go (rest moves) (- n-s distance) e-w 'north)))))))
 
-(map go test-directions)
+(check-equal? (go (first test-directions)) 5 "Test example 1")
+(check-equal? (go (second test-directions)) 2 "Test example 2")
+(check-equal? (go (third test-directions)) 12 "Test example 3")
+
 
