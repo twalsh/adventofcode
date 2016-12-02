@@ -4,33 +4,34 @@
 
 (define square-kb
   #(  0 0 0 0 0
-      0 1 2 3 0
-      0 4 5 6 0
-      0 7 8 9 0
-      0 0 0 0 0
-      ))
+        0 1 2 3 0
+        0 4 5 6 0
+        0 7 8 9 0
+        0 0 0 0 0
+        ))
 
 (define diamond-kb
   #(  0 0 0 0 0 0 0
-      0 0 0 1 0 0 0
-      0 0 2 3 4 0 0
-      0 5 6 7 8 9 0 
-      0 0 A B C 0 0
-      0 0 0 D 0 0 0
-      0 0 0 0 0 0 0
-      ))
+        0 0 0 1 0 0 0
+        0 0 2 3 4 0 0
+        0 5 6 7 8 9 0 
+        0 0 A B C 0 0
+        0 0 0 D 0 0 0
+        0 0 0 0 0 0 0
+        ))
 
 (define (make-next-move-fn kb)
   (define kb-size (sqrt (vector-length kb)))
   (lambda (move button)
     (define next-button
-      (cond ((eq? move #\U) (- button kb-size))
-            ((eq? move #\D) (+ button kb-size))
-            ((eq? move #\L) (- button 1))
-            ((eq? move #\R) (+ button 1))))
-    (if (not (eq? (vector-ref kb next-button) 0))
-        next-button
-        button)))
+      (case move
+        ((#\U) (- button kb-size))
+        ((#\D) (+ button kb-size))
+        ((#\L) (- button 1))
+        ((#\R) (+ button 1))))
+    (case (vector-ref kb next-button)
+      ((0) button)
+      (else next-button))))
 
 (define next-move-diamond (make-next-move-fn diamond-kb))
 (define next-move-square (make-next-move-fn square-kb))
@@ -47,10 +48,10 @@
 (define (code kb button-path instructions)
   (define start-button (vector-memq 5 kb))
   (define (button-map orders [button start-button])
-      (if (empty? orders)
-          '()
-          (let ((next-button (button-path button (first orders))))
-            (cons next-button (button-map (rest orders) next-button)))))
+    (if (empty? orders)
+        '()
+        (let ((next-button (button-path button (first orders))))
+          (cons next-button (button-map (rest orders) next-button)))))
   (map (lambda (k) (vector-ref kb k)) (button-map instructions))
   )
 
