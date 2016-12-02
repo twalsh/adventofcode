@@ -33,11 +33,12 @@
       ((0) button)
       (else next-button))))
 
-(define ((button-move-fn kb) start-button moves)
+(define (button-move-fn kb)
   (define kb-button (kb-move-fn kb))
-  (for/fold ((button start-button))
-            ((move moves))
-    (kb-button move button)))
+  (lambda (start-button moves)
+    (for/fold ((button start-button))
+              ((move moves))
+      (kb-button move button))))
 
 (define (code kb instructions)
   (define button-move (button-move-fn kb))
@@ -47,7 +48,8 @@
         '()
         (let ((next-button (button-move button (first orders))))
           (cons next-button (button-map (rest orders) next-button)))))
-  (map (lambda (k) (vector-ref kb k)) (button-map instructions))
+  (for/list ((button-position (button-map instructions)))
+    (vector-ref kb button-position))
   )
 
 ; Tests
