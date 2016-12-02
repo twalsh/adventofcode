@@ -30,15 +30,14 @@
       '()
       (let ((move (first moves)))
         (define next-button (next-move move start-button))
-    ;    (printf "next ~a~n" next-button)
+       ; (printf "next ~a~n" next-button)
         (cons next-button (button-path next-button (rest moves))))))
 
-(button-path 4 (first instructions))
-(button-path 0 (first instructions))
-
-;(let loop ((instructions instructions) (start-button 4))
-;  (if (empty? instructions)
-;      '()
-;      (let ((next-button-path (button-path start-button (first instructions))))
-;        (define next-button (first next-button-path))
-;        (cons next-button (loop (rest instructions) next-button)))))
+(define code (map add1
+                  (let loop ((instructions instructions) (start-button 4))
+                    (if (empty? instructions)
+                        '()
+                        (let ((next-button-path (button-path start-button (first instructions))))
+                          (define next-button (last next-button-path))
+                          (cons next-button (loop (rest instructions) next-button)))))))
+ code
