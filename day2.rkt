@@ -3,7 +3,7 @@
 (require "advent-utils.rkt")
 
 (define square-kb
-  #(0 0 0 0 0
+  #(  0 0 0 0 0
       0 1 2 3 0
       0 4 5 6 0
       0 7 8 9 0
@@ -11,7 +11,7 @@
       ))
 
 (define diamond-kb
-  #(0 0 0 0 0 0 0
+  #(  0 0 0 0 0 0 0
       0 0 0 1 0 0 0
       0 0 2 3 4 0 0
       0 5 6 7 8 9 0 
@@ -46,13 +46,12 @@
 
 (define (code kb button-path instructions)
   (define start-button (vector-memq 5 kb))
-  (define button-map
-    (let loop ((instructions instructions) (button start-button))
-      (if (empty? instructions)
+  (define (button-map orders [button start-button])
+      (if (empty? orders)
           '()
-          (let ((next-button (button-path button (first instructions))))
-            (cons next-button (loop (rest instructions) next-button))))))
-  (map (lambda (k) (vector-ref kb k)) button-map)
+          (let ((next-button (button-path button (first orders))))
+            (cons next-button (button-map (rest orders) next-button)))))
+  (map (lambda (k) (vector-ref kb k)) (button-map instructions))
   )
 
 ; Tests
