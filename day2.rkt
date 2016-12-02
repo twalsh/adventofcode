@@ -20,7 +20,7 @@
         0 0 0 0 0 0 0
         ))
 
-(define (make-next-move-fn kb)
+(define (kb-move-fn kb)
   (define kb-size (sqrt (vector-length kb)))
   (lambda (move button)
     (define next-button
@@ -33,24 +33,19 @@
       ((0) button)
       (else next-button))))
 
-(define next-move-diamond (make-next-move-fn diamond-kb))
-(define next-move-square (make-next-move-fn square-kb))
+(define ((button-move-fn kb) start-button moves)
+  (define kb-button (kb-move-fn kb))
+  (for/fold ((button start-button))
+            ((move moves))
+    (kb-button move button)))
 
-(define (make-button-path-fn next-move-fn)
-  (lambda (start-button moves)
-    (for/fold ((button start-button))
-              ((move moves))
-      (next-move-fn move button))))
-
-(define button-path-sq (make-button-path-fn next-move-square))
-(define button-path-diamond (make-button-path-fn next-move-diamond))
-
-(define (code kb button-path instructions)
+(define (code kb instructions)
+  (define button-move (button-move-fn kb))
   (define start-button (vector-memq 5 kb))
   (define (button-map orders [button start-button])
     (if (empty? orders)
         '()
-        (let ((next-button (button-path button (first orders))))
+        (let ((next-button (button-move button (first orders))))
           (cons next-button (button-map (rest orders) next-button)))))
   (map (lambda (k) (vector-ref kb k)) (button-map instructions))
   )
@@ -61,11 +56,11 @@
                                               "LURDL"
                                               "UUUUD")))
 
-(check-equal? (code square-kb button-path-sq test-instructions) '(1 9 8 5) "Test code OK")
-(check-equal? (code diamond-kb button-path-diamond test-instructions) '(5 D B 3) "Test code OK")
+(check-equal? (code square-kb test-instructions) '(1 9 8 5) "Test code OK")
+(check-equal? (code diamond-kb test-instructions) '(5 D B 3) "Test code OK")
 
 (define instructions (map string->list (read-input "input2.dat")))
 ; Part 1
-(code square-kb button-path-sq instructions)
+(code square-kb instructions)
 ; Part 2
-(code diamond-kb button-path-diamond instructions)
+(code diamond-kb instructions)
