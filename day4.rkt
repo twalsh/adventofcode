@@ -1,5 +1,10 @@
 #lang racket
 
+(require rackunit)
+(require srfi/1)
+
+(require "advent-utils.rkt")
+
 (define test-lines
   '("aaaaa-bbb-z-y-x-123[abxyz]" 
     ; is a real room because the most common letters are a (5), b (3), and then a tie between x, y,
@@ -8,8 +13,6 @@
     ; is a real room because although the letters are all tied (1 of each), the first five are listed alphabetically.
     "not-a-real-room-404[oarel]"  ; is a real room.
     "totally-real-room-200[decoy]" )) ; is not.
-
-(define line (caar test-lines))
 
 (define (fields line [sep " "])
   (string-split line sep))
@@ -36,27 +39,43 @@
 
   (define letters (append-map string->list encrypted-name))
   (define letter-frequencies (hash->list (frequency-table letters)))
-
-  (define (letter-sort a b)
-    (and 
-     (>= (cdr a) (cdr b))
-     1
-     ;(char<=? (car a) (car b))
-     ))
-
-  (printf "~a ~n" letter-frequencies)
   
+  ; Collect and sort counts
+  (define frequencies (delete-duplicates (sort (map cdr letter-frequencies) >=)))
+
+  (define (letter-sort a b) (char<=? (car a) (car b)))
+  
+  (define sorted-by-count
+     (for/list ((freq frequencies))
+       (define letters-with-count 
+         (filter (lambda (letter-count) (= (cdr letter-count) freq)) letter-frequencies))
+       (sort letters-with-count letter-sort)))
+
+  ;(displayln sorted-by-count)
+
+  (define sorted-letter-list
+     (flatten
+      (for/list ((count-list sorted-by-count))
+        (map car count-list))))
+
   (define sorted-letters
     (list->string
-     (take
-      (map car
-           (sort letter-frequencies letter-sort))
-      5)))
+     (take sorted-letter-list 5)))
+
+  ;(displayln sorted-letters)
      
-  (printf "~a ~a~n" sorted-letters checksum)
   (if (string=? sorted-letters checksum)
       (string->number sector-id)
       0))
 
-(real-room? (first test-lines))
+(define sum-sector-ids
+  (for/sum ((line test-lines))
+    (real-room? line)))
 
+(check-equal? sum-sector-ids 1514 "Test sum = 1514")
+
+(define puzzle-data (read-input "input4.txt"))
+
+(define puzzle-sector-ids (map real-room? puzzle-data))
+(define puzzle-sum (apply + puzzle-sector-ids))
+(displayln puzzle-sum)
