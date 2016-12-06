@@ -17,10 +17,6 @@
 (define (fields line [sep " "])
   (string-split line sep))
 
-(define (frequency-table elements)
-  (for/hash ((element elements))
-    (values element
-            (count (lambda (other-element) (eq? other-element element)) elements))))
 
 (define (frequency-table-reverse table)
   (define counts (hash-values table))
