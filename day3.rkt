@@ -22,11 +22,7 @@
         '()
         (cons (take lines 3) (loop (drop lines 3))))))
 
-(define (transform rows)
-  (for/list ((i (in-range 3)))
-    (map (lambda (r) (list-ref r i)) rows)))
-
-(define transformed-triangles (map transform vertical-triangles))
+(define transformed-triangles (map rows->columns vertical-triangles))
 
 (for/sum ((triplet transformed-triangles))
   (count valid-triangle? triplet))
