@@ -1,5 +1,6 @@
 #lang racket
 
+(require rackunit)
 (require "advent-utils.rkt")
 
 (define test-messages (string-split 
@@ -25,10 +26,25 @@ enarar" #:repeat? #t))
   (for/list ((i (in-range width)))
     (map (lambda(row) (list-ref row i)) rows)))
 
-(define frame (rows->columns (map string->list test-messages)))
-
-(define (column->letter column)
+(define (column->letter column sort-fn)
   (define freq-table (frequency-table column))
-  (displayln freq-table))
+  
+  (define sorted-freq (sort (hash->list freq-table) sort-fn #:key cdr))
+  (define letter (caar sorted-freq))
+  letter)
 
-(column->letter (first frame))
+(define (error-correct messages sort-fn)
+  (define frame
+    (rows->columns
+     (map string->list messages)))
+  (list->string
+   (map (lambda (column)
+          (column->letter column sort-fn)) frame)))
+
+(check-equal? (error-correct test-messages >) "easter" "Test (error-correct)")
+
+(define messages (read-input "input6.txt"))
+(define correct-part-1 (error-correct messages >))
+(displayln correct-part-1)
+(define correct-part-2 (error-correct messages <))
+(displayln correct-part-2)
