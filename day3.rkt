@@ -11,8 +11,9 @@
 
 (check-equal? (valid-triangle? '(5 10 25)) #f "Invalid triangle")
 
-(define puzzle-data (map (lambda (l) (map string->number (string-split l))) (read-input "input3.txt")))
-;(displayln puzzle-data)
+(define puzzle-data
+  (for/list ((line (read-input "input3.txt")))
+    (map string->number (string-split line))))
 
 (count valid-triangle? puzzle-data)
 
