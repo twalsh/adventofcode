@@ -14,11 +14,12 @@
 (define (protocol-support? ip scan-length net-pred)
   (let loop ((ip-sequence (string->list ip)))
     (if (< (length ip-sequence) scan-length)
-        #f
-        (if (net-pred  (take ip-sequence scan-length))
-            #t
-            (loop (rest ip-sequence))))))
-
+        '()
+        (let ((quad (take ip-sequence scan-length)))
+          (if (net-pred quad) 
+              (cons quad (loop (rest ip-sequence)))
+              (loop (rest ip-sequence)))))))
+  
 (define (split-ip ip)
   (define segments (regexp-split #px"[\\[\\]]" ip))
 
@@ -41,11 +42,13 @@
   
   (define network-abba
     (for/or ((segment (car segments)))
-      (protocol-support? segment 4 is-abba?)))
+      (not (empty?
+            (protocol-support? segment 4 is-abba?)))))
 
   (define hypernet-abba
     (for/or ((segment (cadr segments)))
-      (protocol-support? segment 4 is-abba?)))
+      (not (empty?
+            (protocol-support? segment 4 is-abba?)))))
   
   (and network-abba (not hypernet-abba)))
 
@@ -57,6 +60,41 @@
 (define part-one (count tls-support? puzzle-input))
 (displayln part-one)
 
-(define (is-aba? quad)
-  (and (eq? (first quad) (third quad))
-       (not (eq? (first quad) (second quad)))))
+(define (ssl-support? ip)
+  (define segments (split-ip ip))
+  
+  (define (is-aba? quad)
+    (and (eq? (first quad) (third quad))
+         (not (eq? (first quad) (second quad)))))
+  
+  (define net-segments
+    (append*
+     (for/list ((segment (car segments)))
+       (protocol-support? segment 3 is-aba?))))
+ 
+  (define hypernet-segments
+    (append*
+     (for/list ((segment (cadr segments)))
+       (protocol-support? segment 3 is-aba?))))
+    
+  (filter
+   (lambda (segment)
+     (define bab-segment (list (second segment) (first segment) (second segment)))
+     (member bab-segment hypernet-segments))
+   net-segments))
+
+(define test-data-2 '(("aba[bab]xyz" #t) 
+                      ("xyx[xyx]xyx" #f) 
+                      ("aaa[kek]eke" #t)
+                      ("zazbz[bzb]cdb" #t)))
+
+(for ((datum test-data-2))
+  (check-equal? (not (empty? (ssl-support? (car datum)))) (cadr datum) "Part 2 test"))
+
+(define segs (ssl-support? (caar test-data-2)))
+(define part-2
+  (count
+   (lambda (ip) (not (empty? (ssl-support? ip))))
+   puzzle-input))
+
+(displayln part-2)
