@@ -1,6 +1,6 @@
 #lang racket
 
-(provide read-lines read-input frequency-table)
+(provide read-lines read-input frequency-table read-table)
 
 (define (read-input file)
   (read-lines (open-input-file file)))
@@ -15,3 +15,13 @@
   (for/hash ((element elements))
     (values element
             (count (lambda (other-element) (eq? other-element element)) elements))))
+
+(define integer-re #px"(\\d+)")
+
+(define (read-table file-name)
+  (for/list ((line (read-input file-name)))
+    (for/list ((field (string-split line)))
+      (if (regexp-match? integer-re field)
+          (string->number field)
+          field))))
+
