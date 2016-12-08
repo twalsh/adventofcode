@@ -11,10 +11,7 @@
 
 (check-equal? (valid-triangle? '(5 10 25)) #f "Invalid triangle")
 
-(define puzzle-data
-  (for/list ((line (read-input "input3.txt")))
-    (map string->number (string-split line))))
-
+(define puzzle-data (read-table "input3.txt"))
 (count valid-triangle? puzzle-data)
 
 (define vertical-triangles
@@ -22,6 +19,11 @@
     (if (empty? lines)
         '()
         (cons (take lines 3) (loop (drop lines 3))))))
+
+(define (rows->columns row)
+  (for/list ((i (in-range 3)))
+    (for/list ((triplet row))
+      (list-ref triplet i))))
 
 (define transformed-triangles (map rows->columns vertical-triangles))
 
