@@ -1,9 +1,5 @@
 #lang racket
-
 (require "advent-utils.rkt")
-
-(define cols 50)
-(define rows 3)
 
 (define screen%
   (class object%
@@ -16,56 +12,42 @@
     (define/public (print)
       (for ((y (in-range rows)))
         (for ((x (in-range cols)))
-          (define p (pos x y))
-          (printf "~a" (vector-ref screen p)))
+          (printf "~a" (pref x y)))
         (newline))
       (newline))
-    (define (pos x y)
-      (+ x (* y cols)))
-
-    (define/public (pset x y v)
-      (vector-set! screen (pos x y) v))
+    
+    (define (pos x y) (+ x (* y cols)))
+    (define/public (pref x y) (vector-ref screen (pos x y)))
+    (define/public (pset x y v) (vector-set! screen (pos x y) v))
 
     (define/public (rect a b)
-      (for* ((x (in-range a))
-             (y (in-range b)))
+      (for* ((x (in-range a)) (y (in-range b)))
         (pset x y #\#)))
     
     (define/public (rotate-row a b)
       (define row 
         (for/vector ((x (in-range cols)))
-          (define from
-            (if (< x b)
-                (+ (- cols b) x)
-                (- x b)))
-          (define p (pos from a))
-          (vector-ref screen p)))
+          (define from (if (< x b) (+ (- cols b) x) (- x b)))
+          (pref from a)))
       (for ((x (in-range cols)))
         (pset x a (vector-ref row x))))
     
     (define/public (rotate-column a b)
       (define column 
         (for/vector ((y (in-range rows)))
-          (define from
-            (if (< y b)
-                (+ (- rows b) y)
-                (- y b)))
-          (define p (pos a from))
-          (vector-ref screen p)))
+          (define from (if (< y b) (+ (- rows b) y) (- y b)))
+          (pref a from)))
       (for ((y (in-range rows)))
         (pset a y (vector-ref column y))))
 
     (define/public (interpret instruction)
-      (match-let
-          (((regexp re (list _ command args rect-x rect-y shift-x shift-y)) instruction))
+      (match-let (((regexp re (list _ command args rect-x rect-y shift-x shift-y)) instruction))
         (case command
           (("rect") (rect (string->number rect-x) (string->number rect-y)))
           (("rotate column") (rotate-column (string->number shift-x) (string->number shift-y)))
           (("rotate row") (rotate-row (string->number shift-x) (string->number shift-y))))))
-    (define/public (lit-pixels)
-      (vector-count (lambda (p) (eq? p #\#)) screen))
-    )
-  )
+    
+    (define/public (lit-pixels) (vector-count (lambda (p) (eq? p #\#)) screen))))
 
 (define test-instructions
   '("rect 3x2"
