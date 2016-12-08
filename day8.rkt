@@ -1,4 +1,5 @@
 #lang racket
+(require srfi/25)
 (require "advent-utils.rkt")
 
 (define screen%
@@ -8,21 +9,22 @@
     (define rows depth)
     (define re #px"(rect|rotate column|rotate row) ((\\d+)x(\\d+)|(?:x|y)=(\\d+) by (\\d+))")
     (super-new)
-    (define screen  (make-vector (* cols rows) #\space))
+    (define screen (make-array [shape 0 cols 0 rows] 0))
+    
     (define/public (print)
       (for ((y (in-range rows)))
         (for ((x (in-range cols)))
-          (printf "~a" (pref x y)))
+          (define p (array-ref screen x y))
+          (display (if (= p 1) #\# #\space)))
         (newline))
       (newline))
     
-    (define (pos x y) (+ x (* y cols)))
-    (define/public (pref x y) (vector-ref screen (pos x y)))
-    (define/public (pset x y v) (vector-set! screen (pos x y) v))
+    (define/public (pref x y) (array-ref screen x y))
+    (define/public (pset x y v) (array-set! screen x y v))
 
     (define/public (rect a b)
       (for* ((x (in-range a)) (y (in-range b)))
-        (pset x y #\#)))
+        (pset x y 1)))
     
     (define/public (rotate-row a b)
       (define row 
@@ -47,7 +49,10 @@
           (("rotate column") (rotate-column (string->number shift-x) (string->number shift-y)))
           (("rotate row") (rotate-row (string->number shift-x) (string->number shift-y))))))
     
-    (define/public (lit-pixels) (vector-count (lambda (p) (eq? p #\#)) screen))))
+    (define/public (lit-pixels)
+      (for*/sum ((x (range cols))
+                 (y (range rows)))
+        (array-ref screen x y)))))
 
 (define test-instructions
   '("rect 3x2"
