@@ -1,13 +1,25 @@
 #lang racket
+
+(require (for-syntax racket/match))
 (require srfi/25)
 (require "advent-utils.rkt")
 
+(define-syntax (rotate2 stx)
+  (match-let (((list _ axis x y) (syntax->datum stx)))
+    (displayln (string? axis))
+    (displayln (symbol? axis))
+    (displayln x)
+    (displayln y)
+    (datum->syntax stx `(values ,axis ,(string->number x) ,(string->number y)))))
+
+(rotate2 "column" "0" "1")
+  
 (define screen%
   (class object%
     (init width depth)
     (define cols width)
     (define rows depth)
-    (define re #px"(rect|rotate column|rotate row) ((\\d+)x(\\d+)|(?:x|y)=(\\d+) by (\\d+))")
+ 
     (super-new)
     (define screen (make-array [shape 0 cols 0 rows] 0))
     
@@ -26,28 +38,29 @@
       (for* ((x (in-range a)) (y (in-range b)))
         (pset x y 1)))
     
-    (define/public (rotate-row a b)
-      (define row 
-        (for/vector ((x (in-range cols)))
-          (define from (if (< x b) (+ (- cols b) x) (- x b)))
-          (pref from a)))
-      (for ((x (in-range cols)))
-        (pset x a (vector-ref row x))))
-    
-    (define/public (rotate-column a b)
-      (define column 
-        (for/vector ((y (in-range rows)))
-          (define from (if (< y b) (+ (- rows b) y) (- y b)))
-          (pref a from)))
-      (for ((y (in-range rows)))
-        (pset a y (vector-ref column y))))
+    (define/public (rotate-pixel axis a b)
+      (define shift-len
+        (if (eq? axis 'column) rows cols))
+      (define shifted
+        (for/vector ((i (in-range shift-len)))
+          (define from (if (< i b) (+ (- shift-len b) i) (- i b)))
+          (if (eq? axis 'column)
+              (pref a from)
+              (pref from a))
+          ))
+      (for ((i (in-range shift-len)))
+        (if (eq? axis 'column)
+            (pset a i (vector-ref shifted i))
+            (pset i a (vector-ref shifted i)))))
 
+    (define re #px"(rect|rotate (column|row)) ((\\d+)x(\\d+)|(?:x|y)=(\\d+) by (\\d+))")
+    
     (define/public (interpret instruction)
-      (match-let (((regexp re (list _ command args rect-x rect-y shift-x shift-y)) instruction))
+      (match-let (((regexp re (list _ command axis args rect-x rect-y shift-x shift-y)) instruction))
         (case command
           (("rect") (rect (string->number rect-x) (string->number rect-y)))
-          (("rotate column") (rotate-column (string->number shift-x) (string->number shift-y)))
-          (("rotate row") (rotate-row (string->number shift-x) (string->number shift-y))))))
+          (("rotate column") (rotate-pixel (string->symbol axis) (string->number shift-x) (string->number shift-y)))
+          (("rotate row") (rotate-pixel (string->symbol axis) (string->number shift-x) (string->number shift-y))))))
     
     (define/public (lit-pixels)
       (for*/sum ((x (range cols))
