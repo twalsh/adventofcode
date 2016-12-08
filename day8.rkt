@@ -1,25 +1,15 @@
 #lang racket
 
-(require (for-syntax racket/match))
+(require rackunit)
 (require srfi/25)
 (require "advent-utils.rkt")
 
-(define-syntax (rotate2 stx)
-  (match-let (((list _ axis x y) (syntax->datum stx)))
-    (displayln (string? axis))
-    (displayln (symbol? axis))
-    (displayln x)
-    (displayln y)
-    (datum->syntax stx `(values ,axis ,(string->number x) ,(string->number y)))))
-
-(rotate2 "column" "0" "1")
-  
 (define screen%
   (class object%
     (init width depth)
     (define cols width)
     (define rows depth)
- 
+    
     (super-new)
     (define screen (make-array [shape 0 cols 0 rows] 0))
     
@@ -33,12 +23,13 @@
     
     (define/public (pref x y) (array-ref screen x y))
     (define/public (pset x y v) (array-set! screen x y v))
-
-    (define/public (rect a b)
-      (for* ((x (in-range a)) (y (in-range b)))
+    
+    (define/public (rect coor)
+      (for* ((x (in-range (first coor))) (y (in-range (second coor))))
         (pset x y 1)))
     
-    (define/public (rotate-pixel axis a b)
+    (define/public (rotate axis coor)
+      (define-values (a b) (values (first coor) (second coor)))
       (define shift-len
         (if (eq? axis 'column) rows cols))
       (define shifted
@@ -52,15 +43,16 @@
         (if (eq? axis 'column)
             (pset a i (vector-ref shifted i))
             (pset i a (vector-ref shifted i)))))
-
-    (define re #px"(rect|rotate (column|row)) ((\\d+)x(\\d+)|(?:x|y)=(\\d+) by (\\d+))")
+    
+    (define re #px"(rect|rotate) (?:(column|row) )?((\\d+)x(\\d+)|(?:x|y)=(\\d+) by (\\d+))")
     
     (define/public (interpret instruction)
-      (match-let (((regexp re (list _ command axis args rect-x rect-y shift-x shift-y)) instruction))
+      (match-let (((regexp re (list _ command axis _ rect-args ..2 shift-args ..2)) instruction))
         (case command
-          (("rect") (rect (string->number rect-x) (string->number rect-y)))
-          (("rotate column") (rotate-pixel (string->symbol axis) (string->number shift-x) (string->number shift-y)))
-          (("rotate row") (rotate-pixel (string->symbol axis) (string->number shift-x) (string->number shift-y))))))
+          (("rect")
+           (rect (map string->number rect-args)))
+          (("rotate")
+           (rotate (string->symbol axis) (map string->number shift-args))))))
     
     (define/public (lit-pixels)
       (for*/sum ((x (range cols))
@@ -78,7 +70,8 @@
 (for ((instruction test-instructions))
   (send test-screen interpret instruction))
 (send test-screen print)
-(displayln (send test-screen lit-pixels))
+(define test-lit-pixels (send test-screen lit-pixels))
+(check-equal? test-lit-pixels 6 "Test lit-pixels")
 
 (define puzzle-screen (new screen% [width 50] [depth 6]))
 (send puzzle-screen print)
