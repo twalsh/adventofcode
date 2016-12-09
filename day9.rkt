@@ -5,8 +5,8 @@
 
 (define (parse-marker marker)
   (define (not-x? c) (not (char=? c #\x)))
-  (define repeat (string->number (list->string (takef marker not-x?))))
-  (define length (string->number (list->string (rest (dropf marker not-x?)))))
+  (define length (string->number (list->string (takef marker not-x?))))
+  (define repeat (string->number (list->string (rest (dropf marker not-x?)))))
   (values length repeat))
 
 (define (repeat-character characters length repeat)
@@ -18,7 +18,7 @@
 (define (read-marker characters (marker '()))
   (define next (first characters))
   (cond ((eq? next #\))
-         (define-values (length repeat) (parse-marker marker))
+         (define-values (length repeat) (parse-marker (reverse marker)))
          (define repeated-characters (repeat-character (rest characters) length repeat))
         
          (append repeated-characters (read-data (drop characters (add1 length)))))
@@ -49,15 +49,12 @@
 (for ((item test-data))
   (define decoded (decode (car item)))
   (define item-length (string-length decoded))
-  (displayln decoded)
   (check-equal? item-length (second item)))
 
 (define puzzle-data (read-input "input9.txt"))
 (define encrypted-file (first puzzle-data))
-encrypted-file
 
-(define puzzle-output (decode encrypted-file))
+(define puzzle-output (string-length (decode encrypted-file)))
 (displayln puzzle-output)
 
-(string->list encrypted-file)
 
