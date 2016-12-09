@@ -21,12 +21,6 @@ vrdear
 dvrsen
 enarar" #:repeat? #t))
 
-(define (rows->columns rows)
-  (define width (length (first rows)))
-  (for/list ((i (in-range width)))
-    (for/list ((row rows))
-      (list-ref row i))))
-
 (define (column->letter column sort-fn)
   (define freq-table (frequency-table column))
   (define sorted-freq (sort (hash->list freq-table) sort-fn #:key cdr))
