@@ -1,6 +1,7 @@
 #lang racket
 
-(provide read-lines read-input frequency-table rows->columns read-table)
+(provide read-lines read-input frequency-table read-table
+         string->row)
 
 (define (read-input file)
   (read-lines (open-input-file file)))
@@ -16,18 +17,14 @@
     (values element
             (count (lambda (other-element) (eq? other-element element)) elements))))
 
-(define (rows->columns rows)
-  (define width (length (first rows)))
-  (for/list ((i (in-range width)))
-    (for/list ((row rows))
-      (list-ref row i))))
-
 (define integer-re #px"(\\d+)")
 
+(define (string->row line)
+  (for/list ((field (string-split line)))
+    (if (regexp-match? integer-re field)
+        (string->number field)
+        (string->symbol field))))
+
 (define (read-table file-name)
-  (for/list ((line (read-input file-name)))
-    (for/list ((field (string-split line)))
-      (if (regexp-match? integer-re field)
-          (string->number field)
-          field))))
+  (map string->row (read-input file-name)))   
 
