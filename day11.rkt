@@ -28,13 +28,15 @@
            (and (set-member? floor 'LM)
                 (not (set-member? floor 'LG))))))
                         
-(let loop (floors [floor-number 0] [current-path '()] [paths '()] [steps 0])
+(let loop ([floors floors]
+           [floor-number 0]
+           [current-path '()]
+           [paths '()]
+           [steps 0])
   (displayln floors)
   (cond
-    ((> steps 1)
-     'stop
-    ((floor-complete? (vector-ref floors 3))
-     floors
+    ((> steps 1) 'stop)
+    ((floor-complete? (vector-ref floors 3)) floors)
     (else
      (define floor (vector-ref floors floor-number))
      ; Discard empty pick list
@@ -44,10 +46,9 @@
      (for/list ((direction directions))
        (for/list ((pick picks))
          (define new-floors (set-copy floors))
+         (define this-floor (vector-ref new-floors floor-number))
          (define next-floor (vector-ref new-floors (+ floor-number direction)))
-         
          (set-add next-floor pick)
-         (set-remove! floor pick)
-         (loop (+ floor-number direction) 
-         
+         (set-remove! this-floor pick)
+         new-floors)))))
          
