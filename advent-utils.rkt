@@ -17,7 +17,7 @@
     (values element
             (count (lambda (other-element) (eq? other-element element)) elements))))
 
-(define integer-re #px"(\\d+)")
+(define integer-re #px"^(-?\\d+)$")
 
 (define (string->row line)
   (for/list ((field (string-split line)))
