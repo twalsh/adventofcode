@@ -3,49 +3,47 @@
 (require rackunit)
 (require "advent-utils.rkt")
 
-(define (make-computer)
+(define (make-registers)
   (make-hash '((a . 0) (b . 0) (c . 0) (d . 0))))
 
 (define (load-program file-name)
   (list->vector (read-table file-name)))
 
-(define (interpret program [computer (make-computer)])
-  (define (deref arg) (if (symbol? arg) (hash-ref computer arg) arg))
+(define (interpret program [registers (make-registers)])
+  (define (deref arg) (if (symbol? arg) (hash-ref registers arg) arg))
   
   (let loop ((counter 0))
     (cond ((= counter (vector-length program))
-           computer)
+           registers)
           (else
-           (define command (vector-ref program counter))
-           (define instruction (first command))
-           (define arg1 (second command))
+           (define instruction (vector-ref program counter))
+           (define operation (first instruction))
+           (define arg1 (second instruction))
            (define next-counter
-             (case instruction
+             (case operation
                ((cpy)
-                (hash-set! computer (third command) (deref arg1))
+                (hash-set! registers (third instruction) (deref arg1))
                 (add1 counter))
                ((jnz)
                 (if (not (zero? (deref arg1)))
-                    (+ counter (third command))
+                    (+ counter (third instruction))
                     (add1 counter)))
                (else
-                   ; Must be an inc or dec
-                (define op (if (eq? instruction 'inc) add1 sub1))
-                (hash-update! computer arg1 op)
+                (hash-update! registers arg1 (if (eq? operation 'inc) add1 sub1))
                 (add1 counter))))
            (loop next-counter)))))
           
 (define test-program (load-program "test12.rkt"))
-(define test-computer (interpret test-program))
+(define test-registers (interpret test-program))
 
-(check-equal? (hash-ref test-computer 'a) 42 "test interpreter")
+(check-equal? (hash-ref test-registers 'a) 42 "test interpreter")
 
 ; Part 1
 (define puzzle-program (load-program "input12.txt"))
-(define puzzle-computer-1 (interpret puzzle-program))
-(hash-ref puzzle-computer-1 'a)
+(define puzzle-registers-1 (interpret puzzle-program))
+(hash-ref puzzle-registers-1 'a)
 ; Part 2
-(define puzzle-computer-2 (make-computer))
-(hash-set! puzzle-computer-2 'c 1)
-(interpret puzzle-program puzzle-computer-2)
-(hash-ref puzzle-computer-2 'a)
+(define puzzle-registers-2 (make-registers))
+(hash-set! puzzle-registers-2 'c 1)
+(interpret puzzle-program puzzle-registers-2)
+(hash-ref puzzle-registers-2 'a)
