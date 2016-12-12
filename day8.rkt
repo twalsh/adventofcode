@@ -24,7 +24,7 @@
     (define/public (pref x y) (array-ref screen x y))
     (define/public (pset x y v) (array-set! screen x y v))
     
-    (define/public (rect coor)
+    (define/public (rectangle coor)
       (for* ((x (in-range (first coor))) (y (in-range (second coor))))
         (pset x y 1)))
     
@@ -44,15 +44,17 @@
             (pset a i (vector-ref shifted i))
             (pset i a (vector-ref shifted i)))))
     
-    (define re #px"(rect|rotate) (?:(column|row) )?((\\d+)x(\\d+)|(?:x|y)=(\\d+) by (\\d+))")
-    
     (define/public (interpret instruction)
-      (match-let (((regexp re (list _ command axis _ rect-args ..2 shift-args ..2)) instruction))
-        (case command
-          (("rect")
-           (rect (map string->number rect-args)))
-          (("rotate")
-           (rotate (string->symbol axis) (map string->number shift-args))))))
+      (match instruction
+        ((list 'rect arg)
+         (define rect-args (string-split (symbol->string arg) "x"))
+         (rectangle (map string->number rect-args)))
+        ((list 'rotate axis arg1 _ arg2)
+         (define shift-args (list
+                             (string->number
+                              (last (string-split (symbol->string arg1) "=")))
+                             arg2))
+         (rotate axis shift-args))))
     
     (define/public (lit-pixels)
       (for*/sum ((x (range cols))
@@ -60,10 +62,10 @@
         (array-ref screen x y)))))
 
 (define test-instructions
-  '("rect 3x2"
-    "rotate column x=1 by 1"
-    "rotate row y=0 by 4"
-    "rotate column x=1 by 1"))
+  '((rect 3x2)
+    (rotate column x=1 by 1)
+    (rotate row y=0 by 4)
+    (rotate column x=1 by 1)))
 
 (define test-screen (new screen% [width 50] [depth 3]))
 
@@ -74,9 +76,8 @@
 (check-equal? test-lit-pixels 6 "Test lit-pixels")
 
 (define puzzle-screen (new screen% [width 50] [depth 6]))
-(send puzzle-screen print)
 
-(define puzzle-input (read-input "input8.txt"))
+(define puzzle-input (read-table "input8.txt"))
 (for ((instruction puzzle-input))
   (send puzzle-screen interpret instruction))
 (send puzzle-screen print)
