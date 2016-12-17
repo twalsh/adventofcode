@@ -1,7 +1,9 @@
 #lang racket
 
 (require data/bit-vector)
-(require srfi/25)
+(require (rename-in srfi/25 (transpose array:transpose)))
+
+(require graph)
 
 (define (is-wall? x y fav-num)
   ;x*x + 3*x + 2*x*y + y + y*y
@@ -40,25 +42,31 @@
 (define (make-edges grid)
   (define cols (array-end grid 1))
   (define rows (array-end grid 0))
-  (for*/list ((x (in-range cols))
-              (y (in-range rows))
-              ; Filter out wall grid points
-              #:when (not (array-ref grid x y)))
-    ; Create list of vertices to which this vertex connects
-    (define edges
-      (for*/list ((dx '(0 1))
-                  (dy '(0 1))
-                  #:when (and
-                          ; Vertex cannot connect to self
-                          (not (and (= dx 0) (= dy 0)))
-                          ; Edges of grid
-                          (and (>= (+ x dx) 0) (< (+ x dx) cols)) 
-                          (and (>= (+ y dy) 0) (< (+ y dy) rows))
-                          ; Cannot connect to wall grid point
-                          (not (array-ref grid (+ x dx) (+ y dy)))))
-        (list (vertex x y) (vertex (+ x dx) (+ y dy)))))
-    (displayln edges)
-    edges))
+
+  (foldl append '()
+         (for*/list ((x (in-range cols))
+                     (y (in-range rows))
+                     ; Filter out wall grid points
+                     #:when (not (array-ref grid x y)))
+           ; Create list of vertices to which this vertex connects
+           (define edges
+             (for*/list ((dx '(0 1))
+                         (dy '(0 1))
+                         #:when (and
+                                 ; Vertex cannot connect to self
+                                 (not (and (= dx 0) (= dy 0)))
+                                 ; Edges of grid
+                                 (and (>= (+ x dx) 0) (< (+ x dx) cols)) 
+                                 (and (>= (+ y dy) 0) (< (+ y dy) rows))
+                                 ; Cannot connect to wall grid point
+                                 (not (array-ref grid (+ x dx) (+ y dy)))))
+               (list (vertex x y) (vertex (+ x dx) (+ y dy)))))
+           ; (displayln edges)
+           edges)))
 
 (define edges (make-edges test-grid))
+
+(define test-graph (unweighted-graph/undirected edges))
+
+(fewest-vertices-path test-graph (vertex 1 1) (vertex 7 4))
 
