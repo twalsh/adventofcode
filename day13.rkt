@@ -1,6 +1,8 @@
 #lang racket
 
 (require data/bit-vector)
+(require rackunit)
+; Conflicts with transpose from graph
 (require (rename-in srfi/25 (transpose array:transpose)))
 
 (require graph)
@@ -34,10 +36,6 @@
   (newline))
 
 (define test-grid (make-grid test-size test-size test-num))
-(print-grid test-grid)
-
-(struct edge (v1 v2) #:transparent)
-(struct vertex (x y) #:transparent)
 
 (define (make-edges grid)
   (define cols (array-end grid 1))
@@ -55,18 +53,36 @@
                          #:when (and
                                  ; Vertex cannot connect to self
                                  (not (and (= dx 0) (= dy 0)))
+                                 ; Cannot move diagonally
+                                 (not (and (= dx 1) (= dy 1)))
                                  ; Edges of grid
                                  (and (>= (+ x dx) 0) (< (+ x dx) cols)) 
                                  (and (>= (+ y dy) 0) (< (+ y dy) rows))
                                  ; Cannot connect to wall grid point
                                  (not (array-ref grid (+ x dx) (+ y dy)))))
-               (list (vertex x y) (vertex (+ x dx) (+ y dy)))))
+               (list (cons x y) (cons (+ x dx) (+ y dy)))))
            ; (displayln edges)
            edges)))
+
+(define (shortest-path graph v1 v2)
+  (fewest-vertices-path graph v1 v2))
+
+(define (find-path cols rows num start end)
+  (define grid (make-grid cols rows num))
+  (define edges (make-edges grid))
+  (define graph (unweighted-graph/undirected edges))
+  (shortest-path graph start end))
 
 (define edges (make-edges test-grid))
 
 (define test-graph (unweighted-graph/undirected edges))
 
-(fewest-vertices-path test-graph (vertex 1 1) (vertex 7 4))
+(define test-path
+  (find-path 10 10 test-num (cons 1 1) (cons 7 4)))
 
+(define test-moves (sub1 (length test-path)))
+(check-equal? test-moves 11 "Test OK")
+
+(define puzzle-path (find-path 100 100 1350 (cons 1 1) (cons 31 39)))
+(displayln puzzle-path)
+(sub1 (length puzzle-path))
