@@ -83,6 +83,15 @@
 (define test-moves (sub1 (length test-path)))
 (check-equal? test-moves 11 "Test OK")
 
-(define puzzle-path (find-path 100 100 1350 (cons 1 1) (cons 31 39)))
+; Part 1
+(define puzzle-path (find-path 41 41 1350 (cons 1 1) (cons 31 39)))
 (displayln puzzle-path)
 (sub1 (length puzzle-path))
+; Part 2
+(define puzzle-grid (make-grid 41 41 1350))
+(define puzzle-edges (make-edges puzzle-grid))
+(define puzzle-graph (unweighted-graph/undirected puzzle-edges))
+(define-values (distance-map _) (dijkstra puzzle-graph (cons 1 1)))
+
+(length
+ (filter (λ (v)(<= v 50)) (hash-values distance-map)))
