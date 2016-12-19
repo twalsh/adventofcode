@@ -3,6 +3,8 @@
 (require racket/random)
 (require racket/set)
 
+(require srfi/1)
+
 (require "advent-utils.rkt")
 
 (define chip-types '(hydrogen lithium))
@@ -45,7 +47,7 @@
   (cond
     ; Empty elevator
     ((board-elevator-empty? b)
-     (displayln 'EMPTY)
+     ;(displayln 'EMPTY)
      #f)
     (else
      ; Check that each chip is safe
@@ -135,10 +137,10 @@ start-board
   (board elevator chips generators))
 
 (define (read-boards data)
-    (if (empty? data)
-        '()
-        (cons 
-         (make-board (take data 4)) (read-boards (drop data 5)))))
+  (if (empty? data)
+      '()
+      (cons 
+       (make-board (take data 4)) (read-boards (drop data 5)))))
 
 (define test-boards (read-boards test-data))
 
@@ -146,6 +148,67 @@ start-board
   (cond ((not (valid-board? board))
          (displayln board)
          (print-board board))))
+
+(define floors '(F1 F2 F3 F4))
+
+(struct posn (item type floor) #:transparent)
+
+(define (make-posns prefix type)
+  (for/list ((floor floors))
+    (posn prefix type floor)))
+
+(define elevator-posns (make-posns 'E 'E))
+
+(define chip-posns
+  (for/list ((type chip-types))
+    (make-posns 'chip type)))
+
+(define generator-posns
+  (for/list ((type chip-types))
+    (make-posns 'generator type)))
+
+elevator-posns
+chip-posns
+generator-posns
+
+(newline)(newline)(newline)
+
+; All combinations of elevator and chip positions
+(define elevator-chip-posns
+  (map flatten
+       (for/fold ((p elevator-posns))
+                 ((chip chip-posns))
+         (cartesian-product p chip))))
+
+; All possible combinations of elevator, chip and generator positions.
+(define possible-board-data
+  (map flatten
+       (for/fold ((p elevator-chip-posns))
+                 ((generator generator-posns))
+         (cartesian-product p generator))))
+
+; Construct all possible boards
+(define possible-boards
+  (for/list ((data possible-board-data))
+    (define elevator (posn-floor (first data)))
+    (define chips (make-hash))
+    (define generators (make-hash))
+    (for ((d (rest data)))
+      (if (eq? (posn-item d) 'chip)
+          (hash-set! chips (posn-type d) (posn-floor d))
+          (hash-set! generators (posn-type d) (posn-floor d))))
+    (board elevator chips generators)))
+
+(first possible-board-data)
+(first possible-boards)
+
+; Get set of valid boards
+(define valid-boards (list->set (filter valid-board? possible-boards)))
+(set-count valid-boards)
+
+
+;(cartesian-product elevator-posns chip-posns generator-posns)
+
 
 ;(define (start-floors)
 ;  (for/vector ((items
