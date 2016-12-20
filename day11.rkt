@@ -2,7 +2,9 @@
 
 (require racket/hash)
 (require racket/set)
+(require rackunit)
 
+(require graph)
 (require srfi/1)
 
 (require "advent-utils.rkt")
@@ -107,13 +109,7 @@
       (cons 
        (make-board (take data 4)) (read-boards (drop data 5)))))
 
-(define test-boards (read-boards test-data))
 
-(for ((board test-boards))
-  (cond ((not (valid-board? board))
-         (displayln 'FAIL)
-         (displayln board)
-         (print-board board))))
 
 (define floors '(F1 F2 F3 F4))
 
@@ -187,7 +183,9 @@
 ;(define (board-valid-move? b direction items)
   
 
-(define (moves b)
+(define (board-moves b)
+  ; Get list of valid moves from current board
+  
   ; Flatten contents list because it's 2 separate lists of chips and generators
   (define contents (flatten (current-floor-contents b))) ;
 
@@ -197,7 +195,7 @@
     (for/list ((pick (rest (combinations contents)))
                #:when (<= (length pick) 2))
       pick))
-
+  ;(displayln picks)
   (define floor (board-elevator b))
 
   (define possible-moves
@@ -208,34 +206,52 @@
                                (and (eq? floor 'F4) (= direction 1)))))
       (define new-floor (next-floor floor direction))
       (for/list ((pick picks))
-        (displayln pick)
+;        (displayln 'PICK)
+;        (displayln pick)
         ; Copy existing board
         ; Generate new chip hash from union of existing board's and picks
         (define new-chips (hash-copy (board-chips b)))
         (define new-generators (hash-copy (board-generators b)))
         (for ((i pick))
           (define new-item (struct-copy item i [floor new-floor]))
+;          (displayln 'NEW-ITEM)
+;          (displayln new-item)
           (cond ((eq? (item-type i) 'chip)
-                 (hash-set! new-chips (item-element i) new-item)
+                 (hash-set! new-chips (item-element i) new-item))
+                (else
                  (hash-set! new-generators (item-element i) new-item))))
       
         (define new-board (struct-copy board b
                                        [elevator new-floor]
                                        [chips new-chips]
                                        [generators new-generators]))
-        (displayln 'NEW-BOARD)
-        (print-board b)
-        (print-board new-board)
+;        (displayln 'NEW-BOARD)
+;        (print-board b)
+;        (print-board new-board)
         new-board))))
-  possible-moves)
+  (filter valid-board? possible-moves))
 
-(define m
-  (moves (first valid-boards)))
-(for ((board m))
-  (print-board board)
-  (displayln
-   (if (valid-board? board) 'VALID 'INVALID))
-  (newline))
+(define all-moves
+  (append*
+   (for/list ((board valid-boards))
+     (for/list ((move (board-moves board)))
+       (list board move)))))
+
+(define move-graph (unweighted-graph/undirected all-moves))
+
+(define test-boards (read-boards test-data))
+
+(for ((board test-boards))
+  (cond ((not (valid-board? board))
+         (displayln 'FAIL)
+         (displayln board)
+         (print-board board))))
+
+(define start (first test-boards))
+
+(define-values (distances _) (bfs move-graph start))
+
+(check-equal? (hash-ref distances (last test-boards)) 11 "Test OK")
 
 ;       (define sub-trees
 ;         (for/list ((direction directions)
