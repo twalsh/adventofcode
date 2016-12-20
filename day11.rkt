@@ -1,6 +1,6 @@
 #lang racket
 
-(require racket/random)
+(require racket/hash)
 (require racket/set)
 
 (require srfi/1)
@@ -13,35 +13,25 @@
                chips
                generators) #:transparent)
 
+(struct item (type element floor) #:transparent)
+
 ; Return true if a chip or generator - defined as a (type . value)
 ; pair - is on the same floor as the elevator
-(define ((in-elevator? b) item)
-  (eq? (cdr item) (board-elevator b)))
+(define ((on-current-floor? b) item)
+  (eq? (item-floor item) (board-elevator b)))
 
-(define (board-elevator-contents b)
-  (define chips (filter (in-elevator? b) (hash->list (board-chips b))))
-  (define generators (filter (in-elevator? b) (hash->list (board-generators b))))
+(define (current-floor-contents b)
+  (define chips (filter (on-current-floor? b) (hash-values (board-chips b))))
+  (define generators (filter (on-current-floor? b) (hash-values (board-generators b))))
   (list chips generators))
 
 (define (board-elevator-empty? b)
-  (define contents (board-elevator-contents b))
+  (define contents (current-floor-contents b))
  
   (and (empty? (first contents)) (empty? (second contents)))) 
 
-(define (board-elevator-load b)
-  (define contents (board-elevator-contents b))
- 
-  (for/sum ((items contents))
-    (length items)))
-
 (define (chip-generator chip b)
   (hash-ref (board-generators b) (first chip)))
-
-(define (item-floor i)
-  (cdr i))
-
-(define (item-type i)
-  (car i))
 
 (define (valid-board? b)
   (cond
@@ -51,33 +41,20 @@
      #f)
     (else
      ; Check that each chip is safe
-     (for/and ((chip (hash->list (board-chips b))))
+     (for/and ((chip (hash-values (board-chips b))))
        ;(printf "CHIP ~a~n" chip)
        ; Get list of generators on the same floor as the chip
-       (define generators
-         (filter (λ (g) (eq? (item-floor g) (item-floor chip))) (hash->list (board-generators b))))
+       (define all-generators (hash-values (board-generators b)))
+       (define floor-generators
+         (filter (λ (g) (eq? (item-floor g) (item-floor chip))) all-generators))
        ;(printf "GENERATORS ~a~n" generators)
-       (cond ((empty? generators) #t) ; No generators on floor so chip is safe
+       (cond ((empty? floor-generators) #t) ; No generators on floor so chip is safe
              (else
-              (for/or ((g (hash->list (board-generators b)))
+              (for/or ((g floor-generators)
                        #:when (eq? (item-floor g) (item-floor chip)))
-                ;(printf "GENERATOR ~a~n" g)
-                ; If the generator type matches the chip type then the chip is safe.
-                (eq? (item-type g) (item-type chip)))))))))
-
-(define start-board
-  (board 'F1 ; E
-         #hash((hydrogen . F1)
-               (lithium . F1))
-         #hash((hydrogen . F2)
-               (lithium . F3))))
-
-(define next-board
-  (board 'F2
-         #hash((hydrogen . F2)
-               (lithium . F1))
-         #hash((hydrogen . F2)
-               (lithium . F3))))
+                ;      (printf "GENERATOR ~a~n" g)
+                ; If the generator element matches the chip element then the chip is safe.
+                (eq? (item-element g) (item-element chip)))))))))
 
 (define (board-generator b type)
   (hash-ref (board-generators b) type))
@@ -86,6 +63,7 @@
   (hash-ref (board-chips b) type))
 
 (define (print-board b)
+ 
   (for ((floor '(F4 F3 F2 F1)))
     (display floor)
     (printf " ~a " (if (eq? (board-elevator b) floor) "EEE" "..."))
@@ -93,27 +71,14 @@
       (define generator (board-generator b type))
       (define chip (board-chip b type))
       (display 
-       (if (eq? generator floor)
+       (if (eq? (item-floor generator) floor)
            (format "~aG " (substring (symbol->string type) 0 2))
            "... "))
       (display 
-       (if (eq? chip floor)
+       (if (eq? (item-floor chip) floor)
            (format "~aM " (substring (symbol->string type) 0 2))
            "... ")))
     (newline)))
-
-start-board
-
-(print-board start-board)
-
-(valid-board? start-board)
-(newline)(newline)(newline)
-;(valid-board? next-board)
-
-(define start  '((F4 #\.  #\.  #\.  #\.  #\.)  
-                 (F3 #\.  #\.  #\.  LG #\.)  
-                 (F2 #\.  HG #\.  #\.  #\.)  
-                 (F1 E  #\.  HM #\.  LM)))
 
 
 (define test-data (read-table "test11.dat"))
@@ -127,13 +92,13 @@ start-board
     (when (member 'E line)
       (set! elevator floor))
     (when (member 'HM line)
-      (hash-set! chips 'hydrogen floor))
+      (hash-set! chips 'hydrogen (item 'chip 'hydrogen floor)))
     (when (member 'HG line)
-      (hash-set! generators 'hydrogen floor))
+      (hash-set! generators 'hydrogen (item 'generator 'hydrogen floor)))
     (when (member 'LM line)
-      (hash-set! chips 'lithium floor))
+      (hash-set! chips 'lithium (item 'chip 'lithium floor)))
     (when (member 'LG line)
-      (hash-set! generators 'lithium floor)))
+      (hash-set! generators 'lithium (item 'generator 'lithium floor))))
   (board elevator chips generators))
 
 (define (read-boards data)
@@ -146,6 +111,7 @@ start-board
 
 (for ((board test-boards))
   (cond ((not (valid-board? board))
+         (displayln 'FAIL)
          (displayln board)
          (print-board board))))
 
@@ -167,9 +133,9 @@ start-board
   (for/list ((type chip-types))
     (make-posns 'generator type)))
 
-elevator-posns
-chip-posns
-generator-posns
+;elevator-posns
+;chip-posns
+;generator-posns
 
 (newline)(newline)(newline)
 
@@ -195,67 +161,82 @@ generator-posns
     (define generators (make-hash))
     (for ((d (rest data)))
       (if (eq? (posn-item d) 'chip)
-          (hash-set! chips (posn-type d) (posn-floor d))
-          (hash-set! generators (posn-type d) (posn-floor d))))
+          (hash-set! chips (posn-type d) (item 'chip (posn-type d) (posn-floor d)))
+          (hash-set! generators (posn-type d) (item 'generator (posn-type d) (posn-floor d)))))
     (board elevator chips generators)))
 
-(first possible-board-data)
-(first possible-boards)
 
 ; Get set of valid boards
-(define valid-boards (list->set (filter valid-board? possible-boards)))
-(set-count valid-boards)
+(define valid-boards (filter valid-board? possible-boards))
+(define valid-board-set (list->set valid-boards))
+(set-count valid-board-set)
 
+(define (next-floor floor direction)
+  (if (= direction -1)
+      (case floor
+        ((F1) '())
+        ((F2) 'F1)
+        ((F3) 'F2)
+        ((F4) 'F3))
+      (case floor
+        ((F1) 'F2)
+        ((F2) 'F3)
+        ((F3) 'F4)
+        ((F4) '()))))
 
-;(cartesian-product elevator-posns chip-posns generator-posns)
+;(define (board-valid-move? b direction items)
+  
 
+(define (moves b)
+  ; Flatten contents list because it's 2 separate lists of chips and generators
+  (define contents (flatten (current-floor-contents b))) ;
 
-;(define (start-floors)
-;  (for/vector ((items
-;                '((HM LM)
-;                  (HG)
-;                  (LG)
-;                  ())))
-;    (list->mutable-set items)))
-;
-;(define complete-set '(HG HM LG LM))
-;
-;(define (floor-complete? floor)
-;  (for/and ((item complete-set))
-;    (set-member? floor item)))
-;
-;(define directions '(-1 1))
-;
-;(define (floor-ok? floor)
-;  ; Check floor has corresponding generator if microchip is present
-;  (not (or (and (set-member? floor 'HM)
-;                (not (set-member? floor 'HG)))
-;           (and (set-member? floor 'LM)
-;                (not (set-member? floor 'LG))))))
-;
-;(define (all-floors-ok? floors)
-;  (for/and ((i (in-range 1 4)))
-;    (floor-ok? (vector-ref floors i))))
-;
-;(define (print-floors floors)
-;  
-;  (for ((i (in-range 4)))
-;    (displayln (set->list (vector-ref floors i)))))
-;
-;(define test         
-;  (let loop ([floors (start-floors)]
-;             [floor-number 0]
-;             [steps 0])
-;    (cond
-;      ((floor-complete? (vector-ref floors 3)) (cons floors steps))
-;      ((not (all-floors-ok? floors))
-;       (displayln floors)
-;       'stop)
-;      ((> steps 10) floors)
-;      (else
-;       
-;       (define floor (vector-ref floors floor-number))
-;       (define picks (rest (combinations (set->list floor))))
+  ; List of possible combinations of items to move, with no more than 2 allowed in the
+  ; elevator at once.
+  (define picks
+    (for/list ((pick (rest (combinations contents)))
+               #:when (<= (length pick) 2))
+      pick))
+
+  (define floor (board-elevator b))
+
+  (define possible-moves
+    (flatten
+    (for/list ((direction '(-1 1))
+               ; Cannot move down from F1 or up from F4
+               #:when (not (or (and (eq? floor 'F1) (= direction -1))
+                               (and (eq? floor 'F4) (= direction 1)))))
+      (define new-floor (next-floor floor direction))
+      (for/list ((pick picks))
+        (displayln pick)
+        ; Copy existing board
+        ; Generate new chip hash from union of existing board's and picks
+        (define new-chips (hash-copy (board-chips b)))
+        (define new-generators (hash-copy (board-generators b)))
+        (for ((i pick))
+          (define new-item (struct-copy item i [floor new-floor]))
+          (cond ((eq? (item-type i) 'chip)
+                 (hash-set! new-chips (item-element i) new-item)
+                 (hash-set! new-generators (item-element i) new-item))))
+      
+        (define new-board (struct-copy board b
+                                       [elevator new-floor]
+                                       [chips new-chips]
+                                       [generators new-generators]))
+        (displayln 'NEW-BOARD)
+        (print-board b)
+        (print-board new-board)
+        new-board))))
+  possible-moves)
+
+(define m
+  (moves (first valid-boards)))
+(for ((board m))
+  (print-board board)
+  (displayln
+   (if (valid-board? board) 'VALID 'INVALID))
+  (newline))
+
 ;       (define sub-trees
 ;         (for/list ((direction directions)
 ;                    ; Cannot move down from floor 0 or up from floor 3
