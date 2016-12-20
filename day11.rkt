@@ -144,29 +144,49 @@
          new-board))))
   (filter valid-board? possible-moves))
 
-(define (make-board lines)
+(define (element-codes elements [len 2])
+  (for/hash ((element elements))
+    (define code (substring (symbol->string element) 0 len))
+    (values code element)))
+
+(define (make-board lines element-codes)
   (define chips (make-hash))
   (define generators (make-hash))
   (define elevator #f)
+
+  (define chip-codes
+    (for/hash ((code (hash-keys element-codes)))
+      (define chip-code (string->symbol (string-append code "M")))
+      (values chip-code (hash-ref element-codes code))))
+  (define generator-codes
+    (for/hash ((code (hash-keys element-codes)))
+      (define item-code (string->symbol (string-append code "G")))
+      (values item-code (hash-ref element-codes code))))
+
+  (displayln element-codes)
+  
   (for ((line lines))
     (define floor (first line))
-    (when (member 'E line)
+    (when (or (member 'E line) (member 'EEE line))
       (set! elevator floor))
-    (when (member 'HM line)
-      (hash-set! chips 'hydrogen (item 'chip 'hydrogen floor)))
-    (when (member 'HG line)
-      (hash-set! generators 'hydrogen (item 'generator 'hydrogen floor)))
-    (when (member 'LM line)
-      (hash-set! chips 'lithium (item 'chip 'lithium floor)))
-    (when (member 'LG line)
-      (hash-set! generators 'lithium (item 'generator 'lithium floor))))
+    (for ((code (hash-keys chip-codes)))
+      (when (member code line)
+        (define element (hash-ref chip-codes code))
+        (hash-set! chips element (item 'chip element floor))))
+    (for ((code (hash-keys generator-codes)))
+      (when (member code line)
+        (define element (hash-ref generator-codes code))
+        (hash-set! generators element (item 'generator element floor)))))
+    
   (board elevator chips generators))
 
-(define (read-boards data)
-  (if (empty? data)
-      '()
-      (cons 
-       (make-board (take data 4)) (read-boards (drop data 5)))))
+(define (read-boards initial-data elements)
+  (define codes (element-codes elements 1))
+  (let loop ([data initial-data])
+    (if (empty? data)
+        '()
+        (cons 
+         (make-board (take data 4) codes) (loop (drop data 5))))))
 
 (define (make-posns prefix type)
   (for/list ((floor floors))
@@ -219,12 +239,12 @@
 
 (define (move-graph chip-types) (unweighted-graph/undirected (all-moves chip-types)))
 
-(define test-chip-types '(hydrogen lithium))
+(define test-chip-types '(Hydrogen Lithium))
 (define test-data (read-table "test11.dat"))
 
 (newline)(newline)(newline)
 
-(define test-boards (read-boards test-data))
+(define test-boards (read-boards test-data test-chip-types))
 
 ;(for ((board test-boards))
 ;  (cond ((not (valid-board? board))
@@ -267,6 +287,7 @@
         (hash-set! puzzle-generators element (item 'generator element floor))))
     (values (board 'F1 puzzle-chips puzzle-generators) elements)))
 
+(displayln 'PUZZLE-START)
 (print-board puzzle-start puzzle-elements)
 
 (define puzzle-end-data 
@@ -277,6 +298,14 @@
 
 (define puzzle-end-table
   (map string->row puzzle-end-data))
+
+(define puzzle-element-codes (element-codes puzzle-elements))
+(define puzzle-end (make-board puzzle-end-table puzzle-element-codes))
+(displayln 'PUZZLE-END)
+(print-board puzzle-end puzzle-elements)
+
+(define puzzle-moves (moves puzzle-elements puzzle-start))
+
 
 
 ;       (define sub-trees
