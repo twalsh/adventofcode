@@ -9,8 +9,6 @@
 
 (require "advent-utils.rkt")
 
-(define chip-types '(hydrogen lithium))
-
 (struct board (elevator
                chips
                generators) #:transparent)
@@ -34,6 +32,23 @@
 
 (define (chip-generator chip b)
   (hash-ref (board-generators b) (first chip)))
+
+(define floors '(F1 F2 F3 F4))
+
+(struct posn (item type floor) #:transparent)
+
+(define (next-floor floor direction)
+  (if (= direction -1)
+      (case floor
+        ((F1) '())
+        ((F2) 'F1)
+        ((F3) 'F2)
+        ((F4) 'F3))
+      (case floor
+        ((F1) 'F2)
+        ((F2) 'F3)
+        ((F3) 'F4)
+        ((F4) '()))))
 
 (define (valid-board? b)
   (cond
@@ -64,8 +79,7 @@
 (define (board-chip b type)
   (hash-ref (board-chips b) type))
 
-(define (print-board b)
- 
+(define (print-board b chip-types)
   (for ((floor '(F4 F3 F2 F1)))
     (display floor)
     (printf " ~a " (if (eq? (board-elevator b) floor) "EEE" "..."))
@@ -82,8 +96,53 @@
            "... ")))
     (newline)))
 
+(define (board-moves b)
+  ; Get list of valid moves from current board
+  
+  ; Flatten contents list because it's 2 separate lists of chips and generators
+  (define contents (flatten (current-floor-contents b))) ;
 
-(define test-data (read-table "test11.dat"))
+  ; List of possible combinations of items to move, with no more than 2 allowed in the
+  ; elevator at once.
+  (define picks
+    (for/list ((pick (rest (combinations contents)))
+               #:when (<= (length pick) 2))
+      pick))
+  ;(displayln picks)
+  (define floor (board-elevator b))
+
+  (define possible-moves
+    (flatten
+     (for/list ((direction '(-1 1))
+                ; Cannot move down from F1 or up from F4
+                #:when (not (or (and (eq? floor 'F1) (= direction -1))
+                                (and (eq? floor 'F4) (= direction 1)))))
+       (define new-floor (next-floor floor direction))
+       (for/list ((pick picks))
+         ;        (displayln 'PICK)
+         ;        (displayln pick)
+         ; Copy existing board
+         ; Generate new chip hash from union of existing board's and picks
+         (define new-chips (hash-copy (board-chips b)))
+         (define new-generators (hash-copy (board-generators b)))
+         (for ((i pick))
+           (define new-item (struct-copy item i [floor new-floor]))
+           ;          (displayln 'NEW-ITEM)
+           ;          (displayln new-item)
+           (cond ((eq? (item-type i) 'chip)
+                  (hash-set! new-chips (item-element i) new-item))
+                 (else
+                  (hash-set! new-generators (item-element i) new-item))))
+      
+         (define new-board (struct-copy board b
+                                        [elevator new-floor]
+                                        [chips new-chips]
+                                        [generators new-generators]))
+         ;        (displayln 'NEW-BOARD)
+         ;        (print-board b)
+         ;        (print-board new-board)
+         new-board))))
+  (filter valid-board? possible-moves))
 
 (define (make-board lines)
   (define chips (make-hash))
@@ -109,149 +168,116 @@
       (cons 
        (make-board (take data 4)) (read-boards (drop data 5)))))
 
-
-
-(define floors '(F1 F2 F3 F4))
-
-(struct posn (item type floor) #:transparent)
-
 (define (make-posns prefix type)
   (for/list ((floor floors))
     (posn prefix type floor)))
 
 (define elevator-posns (make-posns 'E 'E))
 
-(define chip-posns
-  (for/list ((type chip-types))
-    (make-posns 'chip type)))
+(define (valid-boards chip-types)
+  (define chip-posns
+    (for/list ((type chip-types))
+      (make-posns 'chip type)))
 
-(define generator-posns
-  (for/list ((type chip-types))
-    (make-posns 'generator type)))
+  (define generator-posns
+    (for/list ((type chip-types))
+      (make-posns 'generator type)))
 
-;elevator-posns
-;chip-posns
-;generator-posns
+  ; All combinations of elevator and chip positions
+  (define elevator-chip-posns
+    (map flatten
+         (for/fold ((p elevator-posns))
+                   ((chip chip-posns))
+           (cartesian-product p chip))))
 
-(newline)(newline)(newline)
+  ; All possible combinations of elevator, chip and generator positions.
+  (define possible-board-data
+    (map flatten
+         (for/fold ((p elevator-chip-posns))
+                   ((generator generator-posns))
+           (cartesian-product p generator))))
 
-; All combinations of elevator and chip positions
-(define elevator-chip-posns
-  (map flatten
-       (for/fold ((p elevator-posns))
-                 ((chip chip-posns))
-         (cartesian-product p chip))))
+  ; Construct all possible boards
+  (define possible-boards
+    (for/list ((data possible-board-data))
+      (define elevator (posn-floor (first data)))
+      (define chips (make-hash))
+      (define generators (make-hash))
+      (for ((d (rest data)))
+        (if (eq? (posn-item d) 'chip)
+            (hash-set! chips (posn-type d) (item 'chip (posn-type d) (posn-floor d)))
+            (hash-set! generators (posn-type d) (item 'generator (posn-type d) (posn-floor d)))))
+      (board elevator chips generators)))
 
-; All possible combinations of elevator, chip and generator positions.
-(define possible-board-data
-  (map flatten
-       (for/fold ((p elevator-chip-posns))
-                 ((generator generator-posns))
-         (cartesian-product p generator))))
+  (filter valid-board? possible-boards))
 
-; Construct all possible boards
-(define possible-boards
-  (for/list ((data possible-board-data))
-    (define elevator (posn-floor (first data)))
-    (define chips (make-hash))
-    (define generators (make-hash))
-    (for ((d (rest data)))
-      (if (eq? (posn-item d) 'chip)
-          (hash-set! chips (posn-type d) (item 'chip (posn-type d) (posn-floor d)))
-          (hash-set! generators (posn-type d) (item 'generator (posn-type d) (posn-floor d)))))
-    (board elevator chips generators)))
-
-
-; Get set of valid boards
-(define valid-boards (filter valid-board? possible-boards))
-(define valid-board-set (list->set valid-boards))
-(set-count valid-board-set)
-
-(define (next-floor floor direction)
-  (if (= direction -1)
-      (case floor
-        ((F1) '())
-        ((F2) 'F1)
-        ((F3) 'F2)
-        ((F4) 'F3))
-      (case floor
-        ((F1) 'F2)
-        ((F2) 'F3)
-        ((F3) 'F4)
-        ((F4) '()))))
-
-;(define (board-valid-move? b direction items)
-  
-
-(define (board-moves b)
-  ; Get list of valid moves from current board
-  
-  ; Flatten contents list because it's 2 separate lists of chips and generators
-  (define contents (flatten (current-floor-contents b))) ;
-
-  ; List of possible combinations of items to move, with no more than 2 allowed in the
-  ; elevator at once.
-  (define picks
-    (for/list ((pick (rest (combinations contents)))
-               #:when (<= (length pick) 2))
-      pick))
-  ;(displayln picks)
-  (define floor (board-elevator b))
-
-  (define possible-moves
-    (flatten
-    (for/list ((direction '(-1 1))
-               ; Cannot move down from F1 or up from F4
-               #:when (not (or (and (eq? floor 'F1) (= direction -1))
-                               (and (eq? floor 'F4) (= direction 1)))))
-      (define new-floor (next-floor floor direction))
-      (for/list ((pick picks))
-;        (displayln 'PICK)
-;        (displayln pick)
-        ; Copy existing board
-        ; Generate new chip hash from union of existing board's and picks
-        (define new-chips (hash-copy (board-chips b)))
-        (define new-generators (hash-copy (board-generators b)))
-        (for ((i pick))
-          (define new-item (struct-copy item i [floor new-floor]))
-;          (displayln 'NEW-ITEM)
-;          (displayln new-item)
-          (cond ((eq? (item-type i) 'chip)
-                 (hash-set! new-chips (item-element i) new-item))
-                (else
-                 (hash-set! new-generators (item-element i) new-item))))
-      
-        (define new-board (struct-copy board b
-                                       [elevator new-floor]
-                                       [chips new-chips]
-                                       [generators new-generators]))
-;        (displayln 'NEW-BOARD)
-;        (print-board b)
-;        (print-board new-board)
-        new-board))))
-  (filter valid-board? possible-moves))
-
-(define all-moves
+(define (all-moves chip-types)
   (append*
-   (for/list ((board valid-boards))
+   (for/list ((board (valid-boards chip-types)))
      (for/list ((move (board-moves board)))
        (list board move)))))
 
-(define move-graph (unweighted-graph/undirected all-moves))
+(define (move-graph chip-types) (unweighted-graph/undirected (all-moves chip-types)))
+
+(define test-chip-types '(hydrogen lithium))
+(define test-data (read-table "test11.dat"))
+
+(newline)(newline)(newline)
 
 (define test-boards (read-boards test-data))
 
-(for ((board test-boards))
-  (cond ((not (valid-board? board))
-         (displayln 'FAIL)
-         (displayln board)
-         (print-board board))))
+;(for ((board test-boards))
+;  (cond ((not (valid-board? board))
+;         (displayln 'FAIL)
+;         (displayln board)
+;         (print-board board))))
 
 (define start (first test-boards))
 
-(define-values (distances _) (bfs move-graph start))
+(define (moves chip-types start)
+  (define-values (distances _) (bfs (move-graph chip-types) start))
+  distances)
 
-(check-equal? (hash-ref distances (last test-boards)) 11 "Test OK")
+(define test-moves (moves test-chip-types start))
+(define test-distance (hash-ref test-moves (last test-boards)))
+(check-equal? test-distance 11 "Test OK")
+
+(define puzzle-input (read-input "input11.txt"))
+
+(define-values (puzzle-start puzzle-elements)
+  (let ((puzzle-chips (make-hash))
+        (puzzle-generators (make-hash))
+        (elements (mutable-set)))
+    (for ((i (in-range 4)))
+      (printf "~a ~a~n" i (list-ref floors i))
+      (define line (list-ref puzzle-input i))
+      (define floor (list-ref floors i))
+      (displayln line)
+      (define element-chips (map
+                        string->symbol
+                        (regexp-match* #px"(\\w+)-compatible microchip" line #:match-select cadr)))
+      
+      (for ((element element-chips))
+        (set-add! elements element)
+        (hash-set! puzzle-chips element (item 'chip element floor)))
+      (define element-generators (map
+                                  string->symbol
+                                  (regexp-match* #px"(\\w+) generator" line #:match-select cadr)))
+      (for ((element element-generators))
+        (hash-set! puzzle-generators element (item 'generator element floor))))
+    (values (board 'F1 puzzle-chips puzzle-generators) elements)))
+
+(print-board puzzle-start puzzle-elements)
+
+(define puzzle-end-data 
+  '("F4 EEE ruG ruM cuG cuM coG coM prG prM plG plM" 
+    "F3 ... ... ... ... ... ... ... ... ... ... ..." 
+    "F2 ... ... ... ... ... ... ... ... ... ... ..." 
+    "F1 ... ... ... ... ... ... ... ... ... ... ..."))
+
+(define puzzle-end-table
+  (map string->row puzzle-end-data))
+
 
 ;       (define sub-trees
 ;         (for/list ((direction directions)
