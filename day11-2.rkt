@@ -189,6 +189,7 @@
                 #:when (not (or (and (eq? floor 'F1) (= direction -1))
                                 (and (eq? floor 'F4) (= direction 1)))))
        (define new-floor (next-floor floor direction))
+       (define new-distance (floor->score new-floor))
        (for/list ((pick picks))
          ;        (displayln 'PICK)
          ;        (displayln pick)
@@ -197,7 +198,9 @@
          (define new-chips (hash-copy (board-chips b)))
          (define new-generators (hash-copy (board-generators b)))
          (for ((i pick))
-           (define new-item (struct-copy item i [floor new-floor]))
+           (define new-item (struct-copy item i
+                                         [floor new-floor]
+                                         [score new-distance]))
            ;          (displayln 'NEW-ITEM)
            ;          (displayln new-item)
            (cond ((eq? (item-type i) 'chip)
@@ -208,7 +211,9 @@
          (define new-board (struct-copy board b
                                         [elevator new-floor]
                                         [chips new-chips]
-                                        [generators new-generators]))
+                                        [generators new-generators]
+                                        ))
+         (set-board-distance! new-board (score-board new-board))
          ;        (displayln 'NEW-BOARD)
          ;        (print-board b)
          ;        (print-board new-board)
@@ -244,17 +249,17 @@
     (displayln 'LOOP)
     (printf "HEAP-COUNT ~a~n" (heap-count open))
     (cond
-      ((> (heap-count open) 4)
+      ((> (heap-count open) 1024)
        'abort)
       ((> (heap-count open) 0)
-       (displayln 'HEAP)
-       (for ((b (heap->vector open)))
-         (displayln b)
-         (board-print b))
-       (define n (heap-min open))
-       (newline)
-       (displayln 'HEAP-MIN)
-       (board-print n)
+;       (displayln 'HEAP)
+;       (for ((b (heap->vector open)))
+;         (displayln b)
+;         (board-print b))
+      (define n (heap-min open))
+;       (newline)
+     ;  (displayln 'HEAP-MIN)
+      ; (board-print n)
        (set-add! closed n)
        (displayln 'CLOSED)
        (for ((b (set->list closed)))
@@ -263,9 +268,9 @@
        (if (board-equal? n goal)
            'solution
            (for ((next (board-valid-moves n)))
-             (displayln 'NEXT)
+          ;   (displayln 'NEXT)
              (set-board-depth! next (add1 (board-depth n)))
-             (board-print next)
+           ;  (board-print next)
              (displayln next)
              (define prior (find-prior closed next))
              (cond (prior
