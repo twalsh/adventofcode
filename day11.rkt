@@ -1,19 +1,21 @@
 #lang racket
 
-(require racket/hash)
 (require racket/set)
 (require rackunit)
-
-(require graph)
-(require srfi/1)
+(require data/heap)
 
 (require "advent-utils.rkt")
 
 (struct board (elevator
                chips
-               generators) #:transparent)
+               generators
+               [depth #:mutable]
+               [distance #:mutable]
+               printer
+               )
+  #:transparent)
 
-(struct item (type element floor) #:transparent)
+(struct item (type element floor score) #:transparent)
 
 ; Return true if a chip or generator - defined as a (type . value)
 ; pair - is on the same floor as the elevator
@@ -28,14 +30,15 @@
 (define (board-elevator-empty? b)
   (define contents (current-floor-contents b))
  
-  (and (empty? (first contents)) (empty? (second contents)))) 
+  (and (empty? (first contents)) (empty? (second contents))))
+
+(define (board-print b) ((board-printer b) b))
 
 (define (chip-generator chip b)
   (hash-ref (board-generators b) (first chip)))
 
 (define floors '(F1 F2 F3 F4))
 
-(struct posn (item type floor) #:transparent)
 
 (define (next-floor floor direction)
   (if (= direction -1)
@@ -49,6 +52,13 @@
         ((F2) 'F3)
         ((F3) 'F4)
         ((F4) '()))))
+
+(define (floor->score floor)
+  (case floor
+    ((F1) 3)
+    ((F2) 2)
+    ((F3) 1)
+    ((F4) 0)))
 
 (define (valid-board? b)
   (cond
@@ -79,7 +89,7 @@
 (define (board-chip b type)
   (hash-ref (board-chips b) type))
 
-(define (print-board b chip-types)
+(define ((make-board-print chip-types) b)
   (for ((floor '(F4 F3 F2 F1)))
     (display floor)
     (printf " ~a " (if (eq? (board-elevator b) floor) "EEE" "..."))
@@ -94,9 +104,68 @@
        (if (eq? (item-floor chip) floor)
            (format "~aM " (substring (symbol->string type) 0 2))
            "... ")))
-    (newline)))
+    (newline))
+  (printf "~a ~a ~a~n" (board-distance b) (board-depth b) (board-score b)))
 
-(define (board-moves b)
+(define (element-codes elements [len 2])
+  (for/hash ((element elements))
+    (define code (substring (symbol->string element) 0 len))
+    (values code element)))
+
+(define (score-board b)
+  (define g-score
+    (for/sum ((g (hash-values (board-generators b))))
+      (item-score g)))
+  (define c-score
+    (for/sum ((c (hash-values (board-chips b))))
+      (item-score c)))
+  (+ g-score c-score))
+
+(define (make-board lines element-codes)
+  (define chips (make-hash))
+  (define generators (make-hash))
+  (define elevator #f)
+
+  (define chip-codes
+    (for/hash ((code (hash-keys element-codes)))
+      (define chip-code (string->symbol (string-append code "M")))
+      (values chip-code (hash-ref element-codes code))))
+  (define generator-codes
+    (for/hash ((code (hash-keys element-codes)))
+      (define item-code (string->symbol (string-append code "G")))
+      (values item-code (hash-ref element-codes code))))
+
+  (for ((line lines))
+    (define floor (first line))
+    (define score (floor->score floor))
+    (when (or (member 'E line) (member 'EEE line))
+      (set! elevator floor))
+    (for ((code (hash-keys chip-codes)))
+      (when (member code line)
+        (define element (hash-ref chip-codes code))
+        (hash-set! chips element (item 'chip element floor score))))
+    (for ((code (hash-keys generator-codes)))
+      (when (member code line)
+        (define element (hash-ref generator-codes code))
+        (define new-generator (item 'generator element floor (floor->score floor)))
+        (hash-set! generators element new-generator))))
+
+  (define printer (make-board-print (hash-values element-codes)))
+  (define new-board 
+    (board elevator chips generators 0 0 printer))
+  (set-board-distance! new-board (score-board new-board))
+  
+  new-board)
+
+(define (read-boards initial-data elements)
+  (define codes (element-codes elements 1))
+  (let loop ([data initial-data])
+    (if (empty? data)
+        '()
+        (cons 
+         (make-board (take data 4) codes) (loop (drop data 5))))))
+
+(define (board-valid-moves b)
   ; Get list of valid moves from current board
   
   ; Flatten contents list because it's 2 separate lists of chips and generators
@@ -118,6 +187,7 @@
                 #:when (not (or (and (eq? floor 'F1) (= direction -1))
                                 (and (eq? floor 'F4) (= direction 1)))))
        (define new-floor (next-floor floor direction))
+       (define new-distance (floor->score new-floor))
        (for/list ((pick picks))
          ;        (displayln 'PICK)
          ;        (displayln pick)
@@ -126,7 +196,9 @@
          (define new-chips (hash-copy (board-chips b)))
          (define new-generators (hash-copy (board-generators b)))
          (for ((i pick))
-           (define new-item (struct-copy item i [floor new-floor]))
+           (define new-item (struct-copy item i
+                                         [floor new-floor]
+                                         [score new-distance]))
            ;          (displayln 'NEW-ITEM)
            ;          (displayln new-item)
            (cond ((eq? (item-type i) 'chip)
@@ -137,174 +209,128 @@
          (define new-board (struct-copy board b
                                         [elevator new-floor]
                                         [chips new-chips]
-                                        [generators new-generators]))
+                                        [generators new-generators]
+                                        ))
+         (set-board-distance! new-board (score-board new-board))
          ;        (displayln 'NEW-BOARD)
          ;        (print-board b)
          ;        (print-board new-board)
          new-board))))
   (filter valid-board? possible-moves))
 
-(define (element-codes elements [len 2])
-  (for/hash ((element elements))
-    (define code (substring (symbol->string element) 0 len))
-    (values code element)))
+(define (board-score b)
+  (+ (board-distance b) (board-depth b)))
 
-(define (make-board lines element-codes)
-  (define chips (make-hash))
-  (define generators (make-hash))
-  (define elevator #f)
+(define (board-score-<=? a b)
+  (<= (board-score a) (board-score b)))
 
-  (define chip-codes
-    (for/hash ((code (hash-keys element-codes)))
-      (define chip-code (string->symbol (string-append code "M")))
-      (values chip-code (hash-ref element-codes code))))
-  (define generator-codes
-    (for/hash ((code (hash-keys element-codes)))
-      (define item-code (string->symbol (string-append code "G")))
-      (values item-code (hash-ref element-codes code))))
+(define (board=? a b)
+  (and (eq? (board-elevator a) (board-elevator b))
+       (equal? (board-generators a) (board-generators b))
+       (equal? (board-chips a) (board-chips b))))
 
-  (displayln element-codes)
-  
-  (for ((line lines))
-    (define floor (first line))
-    (when (or (member 'E line) (member 'EEE line))
-      (set! elevator floor))
-    (for ((code (hash-keys chip-codes)))
-      (when (member code line)
-        (define element (hash-ref chip-codes code))
-        (hash-set! chips element (item 'chip element floor))))
-    (for ((code (hash-keys generator-codes)))
-      (when (member code line)
-        (define element (hash-ref generator-codes code))
-        (hash-set! generators element (item 'generator element floor)))))
+(define (find-prior closed next)
+  (findf
+   (lambda (prior)
+     (board=? prior next))
+   (set->list closed)))
     
-  (board elevator chips generators))
+(define (search initial goal)
+  ; Initial depth = 0
+  (set-board-depth! initial 0)
+  (define init-open (make-heap board-score-<=?))
+  (heap-add! init-open initial)
 
-(define (read-boards initial-data elements)
-  (define codes (element-codes elements 1))
-  (let loop ([data initial-data])
-    (if (empty? data)
-        '()
-        (cons 
-         (make-board (take data 4) codes) (loop (drop data 5))))))
+  (define closed (mutable-set))
 
-(define (make-posns prefix type)
-  (for/list ((floor floors))
-    (posn prefix type floor)))
+  (let loop ((open init-open))
+    ; (displayln 'LOOP)
+    ;(printf "HEAP-COUNT ~a~n" (heap-count open))
+    (cond
+      ((> (heap-count open) 1024)
+       'abort)
+      ((> (heap-count open) 0)
+       ;(printf "HEAP SIZE ~a~n" (heap-count open))
+       (define n (heap-min open))
+       (heap-remove-min! open)
+       (set-add! closed n)
+       (cond ((board=? n goal)
+              (displayln 'SOLUTION)
+              (displayln n)
+              n)
+             (else 
+              (define moves (board-valid-moves n))
+              (for ((next moves))
+                (set-board-depth! next (add1 (board-depth n)))
+                (define prior (find-prior closed next))
+                (cond (prior
+                       ;(displayln 'FOUND-PRIOR)
+                       (cond (< (board-score next) (board-score prior))
+                             (set-remove! closed prior)
+                             (heap-add! open next)))
+                      (else
+                       (heap-add! open next))))
+              (loop open))))
+      (else 'no-solution))))
 
-(define elevator-posns (make-posns 'E 'E))
-
-(define (valid-boards chip-types)
-  (define chip-posns
-    (for/list ((type chip-types))
-      (make-posns 'chip type)))
-
-  (define generator-posns
-    (for/list ((type chip-types))
-      (make-posns 'generator type)))
-
-  ; All combinations of elevator and chip positions
-  (define elevator-chip-posns
-    (map flatten
-         (for/fold ((p elevator-posns))
-                   ((chip chip-posns))
-           (cartesian-product p chip))))
-
-  ; All possible combinations of elevator, chip and generator positions.
-  (define possible-board-data
-    (map flatten
-         (for/fold ((p elevator-chip-posns))
-                   ((generator generator-posns))
-           (cartesian-product p generator))))
-
-  ; Construct all possible boards
-  (define possible-boards
-    (for/list ((data possible-board-data))
-      (define elevator (posn-floor (first data)))
-      (define chips (make-hash))
-      (define generators (make-hash))
-      (for ((d (rest data)))
-        (if (eq? (posn-item d) 'chip)
-            (hash-set! chips (posn-type d) (item 'chip (posn-type d) (posn-floor d)))
-            (hash-set! generators (posn-type d) (item 'generator (posn-type d) (posn-floor d)))))
-      (board elevator chips generators)))
-
-  (filter valid-board? possible-boards))
-
-(define (all-moves chip-types)
-  (append*
-   (for/list ((board (valid-boards chip-types)))
-     (for/list ((move (board-moves board)))
-       (list board move)))))
-
-(define (move-graph chip-types) (unweighted-graph/undirected (all-moves chip-types)))
-
+; Test
 (define test-chip-types '(Hydrogen Lithium))
 (define test-data (read-table "test11.dat"))
-
-(newline)(newline)(newline)
-
 (define test-boards (read-boards test-data test-chip-types))
 
-;(for ((board test-boards))
-;  (cond ((not (valid-board? board))
-;         (displayln 'FAIL)
-;         (displayln board)
-;         (print-board board))))
-
 (define start (first test-boards))
+(define end (last test-boards))
 
-(define (moves chip-types start)
-  (define-values (distances _) (bfs (move-graph chip-types) start))
-  distances)
+(define test-result (search start end))
+(board-print test-result)
+(printf "Steps: ~a~n" (board-depth test-result))
+(check-equal? (board-depth test-result) 11 "Search test OK")
 
-(define test-moves (moves test-chip-types start))
-(define test-distance (hash-ref test-moves (last test-boards)))
-(check-equal? test-distance 11 "Test OK")
+;;(define puzzle-input (read-input "input11.txt"))
+;;
+;;(define-values (puzzle-start puzzle-elements)
+;;  (let ((puzzle-chips (make-hash))
+;;        (puzzle-generators (make-hash))
+;;        (elements (mutable-set)))
+;;  
+;;    (for ((i (in-range 4)))
+;;      (define line (list-ref puzzle-input i))
+;;      (define floor (list-ref floors i))
+;;      (define score (floor->score floor))
+;;    
+;;      (define element-chips (map
+;;                             string->symbol
+;;                             (regexp-match* #px"(\\w+)-compatible microchip" line #:match-select cadr)))
+;;      
+;;      (for ((element element-chips))
+;;        (set-add! elements element)
+;;        (hash-set! puzzle-chips element (item 'chip element floor score)))
+;;      (define element-generators (map
+;;                                  string->symbol
+;;                                  (regexp-match* #px"(\\w+) generator" line #:match-select cadr)))
+;;      (for ((element element-generators))
+;;        (hash-set! puzzle-generators element (item 'generator element floor score))))
+;;    (define printer (make-board-print (set->list elements)))
+;;    (values (board 'F1 puzzle-chips puzzle-generators 0 0 printer) elements)))
+;;
+;;;(displayln 'PUZZLE-START)
+;;;(print-board puzzle-start puzzle-elements)
+;;
+;;(define puzzle-end-data 
+;;  '("F4 EEE ruG ruM cuG cuM coG coM prG prM plG plM" 
+;;    "F3 ... ... ... ... ... ... ... ... ... ... ..." 
+;;    "F2 ... ... ... ... ... ... ... ... ... ... ..." 
+;;    "F1 ... ... ... ... ... ... ... ... ... ... ..."))
+;;
+;;(define puzzle-end-table
+;;  (map string->row puzzle-end-data))
+;;
+;;(define puzzle-element-codes (element-codes puzzle-elements))
+;;(define puzzle-end (make-board puzzle-end-table puzzle-element-codes))
+;(displayln 'PUZZLE-END)
+;(print-board puzzle-end puzzle-elements)
 
-(define puzzle-input (read-input "input11.txt"))
-
-(define-values (puzzle-start puzzle-elements)
-  (let ((puzzle-chips (make-hash))
-        (puzzle-generators (make-hash))
-        (elements (mutable-set)))
-    (for ((i (in-range 4)))
-      (printf "~a ~a~n" i (list-ref floors i))
-      (define line (list-ref puzzle-input i))
-      (define floor (list-ref floors i))
-      (displayln line)
-      (define element-chips (map
-                        string->symbol
-                        (regexp-match* #px"(\\w+)-compatible microchip" line #:match-select cadr)))
-      
-      (for ((element element-chips))
-        (set-add! elements element)
-        (hash-set! puzzle-chips element (item 'chip element floor)))
-      (define element-generators (map
-                                  string->symbol
-                                  (regexp-match* #px"(\\w+) generator" line #:match-select cadr)))
-      (for ((element element-generators))
-        (hash-set! puzzle-generators element (item 'generator element floor))))
-    (values (board 'F1 puzzle-chips puzzle-generators) elements)))
-
-(displayln 'PUZZLE-START)
-(print-board puzzle-start puzzle-elements)
-
-(define puzzle-end-data 
-  '("F4 EEE ruG ruM cuG cuM coG coM prG prM plG plM" 
-    "F3 ... ... ... ... ... ... ... ... ... ... ..." 
-    "F2 ... ... ... ... ... ... ... ... ... ... ..." 
-    "F1 ... ... ... ... ... ... ... ... ... ... ..."))
-
-(define puzzle-end-table
-  (map string->row puzzle-end-data))
-
-(define puzzle-element-codes (element-codes puzzle-elements))
-(define puzzle-end (make-board puzzle-end-table puzzle-element-codes))
-(displayln 'PUZZLE-END)
-(print-board puzzle-end puzzle-elements)
-
-(define puzzle-moves (moves puzzle-elements puzzle-start))
+;(define puzzle-moves (moves puzzle-elements puzzle-start))
 
 
 
