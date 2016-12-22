@@ -10,7 +10,9 @@
                chips
                generators
                [depth #:mutable]
-               [score #:mutable])
+               [distance #:mutable]
+               printer
+               )
   #:transparent)
 
 (struct item (type element floor score) #:transparent)
@@ -28,7 +30,9 @@
 (define (board-elevator-empty? b)
   (define contents (current-floor-contents b))
  
-  (and (empty? (first contents)) (empty? (second contents)))) 
+  (and (empty? (first contents)) (empty? (second contents))))
+
+(define (board-print b) ((board-printer b) b))
 
 (define (chip-generator chip b)
   (hash-ref (board-generators b) (first chip)))
@@ -85,7 +89,9 @@
 (define (board-chip b type)
   (hash-ref (board-chips b) type))
 
-(define (print-board b chip-types)
+(define ((make-board-print chip-types) b)
+  (displayln 'BOARD-PRINT)
+  (displayln b)
   (for ((floor '(F4 F3 F2 F1)))
     (display floor)
     (printf " ~a " (if (eq? (board-elevator b) floor) "EEE" "..."))
@@ -100,7 +106,8 @@
        (if (eq? (item-floor chip) floor)
            (format "~aM " (substring (symbol->string type) 0 2))
            "... ")))
-    (newline)))
+    (newline))
+  (printf "~a ~a ~a~n" (board-distance b) (board-depth b) (board-score b)))
 
 (define (element-codes elements [len 2])
   (for/hash ((element elements))
@@ -142,11 +149,13 @@
     (for ((code (hash-keys generator-codes)))
       (when (member code line)
         (define element (hash-ref generator-codes code))
-        (hash-set! generators element (item 'generator element floor score)))))
+        (define new-generator (item 'generator element floor (floor->score floor)))
+        (hash-set! generators element new-generator))))
 
+  (define printer (make-board-print (hash-values element-codes)))
   (define new-board 
-    (board elevator chips generators 0 0))
-  (set-board-score! new-board (score-board new-board))
+    (board elevator chips generators 0 0 printer))
+  (set-board-distance! new-board (score-board new-board))
   
   new-board)
 
@@ -206,10 +215,11 @@
          new-board))))
   (filter valid-board? possible-moves))
 
+(define (board-score b)
+  (+ (board-distance b) (board-depth b)))
+
 (define (board-score-<=? a b)
-  (<=
-   (+ (board-score a) (board-depth a))
-   (+ (board-score b) (board-depth b))))
+  (<= (board-score a) (board-score b)))
 
 (define (board-equal? a b)
   (and (eq? (board-elevator a) (board-elevator b))
@@ -231,31 +241,41 @@
   (define closed (mutable-set))
 
   (let loop ((open init-open))
-    (displayln (heap-count open))
+    (displayln 'LOOP)
+    (printf "HEAP-COUNT ~a~n" (heap-count open))
     (cond
-      ((> (heap-count open) 1024)
+      ((> (heap-count open) 4)
        'abort)
       ((> (heap-count open) 0)
-       ;(displayln 'HEAP)
-     ;  (for ((b (heap->vector open)))
-      ;   (printf "~a~n" b))
+       (displayln 'HEAP)
+       (for ((b (heap->vector open)))
+         (displayln b)
+         (board-print b))
        (define n (heap-min open))
+       (newline)
        (displayln 'HEAP-MIN)
-       (displayln n)
+       (board-print n)
        (set-add! closed n)
        (displayln 'CLOSED)
-       (displayln closed)
+       (for ((b (set->list closed)))
+         (board-print b))
+       (newline)
        (if (board-equal? n goal)
            'solution
            (for ((next (board-valid-moves n)))
+             (displayln 'NEXT)
              (set-board-depth! next (add1 (board-depth n)))
+             (board-print next)
+             (displayln next)
              (define prior (find-prior closed next))
-             (if prior
-                 (cond (< (board-score next) (board-score prior))
-                       (set-remove! closed prior)
-                       (heap-add! open next))
-                 (heap-add! open next))))
-       (loop open))
+             (cond (prior
+                    (displayln 'FOUND-PRIOR)
+                    (cond (< (board-score next) (board-score prior))
+                          (set-remove! closed prior)
+                          (heap-add! open next)))
+                   (else
+                    (heap-add! open next)))
+             (loop open))))
       (else 'no-solution))))
 
 ; Test
@@ -279,6 +299,7 @@ result
   (let ((puzzle-chips (make-hash))
         (puzzle-generators (make-hash))
         (elements (mutable-set)))
+  
     (for ((i (in-range 4)))
       (define line (list-ref puzzle-input i))
       (define floor (list-ref floors i))
@@ -296,7 +317,8 @@ result
                                   (regexp-match* #px"(\\w+) generator" line #:match-select cadr)))
       (for ((element element-generators))
         (hash-set! puzzle-generators element (item 'generator element floor score))))
-    (values (board 'F1 puzzle-chips puzzle-generators 0 0) elements)))
+    (define printer (make-board-print (set->list elements)))
+    (values (board 'F1 puzzle-chips puzzle-generators 0 0 printer) elements)))
 
 ;(displayln 'PUZZLE-START)
 ;(print-board puzzle-start puzzle-elements)
