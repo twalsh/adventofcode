@@ -9,8 +9,8 @@
 (struct board (elevator
                chips
                generators
-               [depth #:mutable #:auto]
-               [score #:mutable #:auto])
+               [depth #:mutable]
+               [score #:mutable])
   #:transparent)
 
 (struct item (type element floor score) #:transparent)
@@ -145,7 +145,7 @@
         (hash-set! generators element (item 'generator element floor score)))))
 
   (define new-board 
-    (board elevator chips generators))
+    (board elevator chips generators 0 0))
   (set-board-score! new-board (score-board new-board))
   
   new-board)
@@ -207,29 +207,56 @@
   (filter valid-board? possible-moves))
 
 (define (board-score-<=? a b)
-  (<= (board-score a) (board-score b)))
+  (<=
+   (+ (board-score a) (board-depth a))
+   (+ (board-score b) (board-depth b))))
 
+(define (board-equal? a b)
+  (and (eq? (board-elevator a) (board-elevator b))
+       (equal? (board-generators a) (board-generators b))
+       (equal? (board-chips a) (board-chips b))))
+
+(define (find-prior closed next)
+  (findf
+   (lambda (prior)
+     (board-equal? prior next))
+   (set->list closed)))
+    
 (define (search initial goal)
   ; Initial depth = 0
   (set-board-depth! initial 0)
-  (displayln (board-depth initial))
   (define init-open (make-heap board-score-<=?))
   (heap-add! init-open initial)
 
   (define closed (mutable-set))
 
   (let loop ((open init-open))
-    (cond ((> 0 (heap-count open))
-           (define n (heap-min open))
-           (set-add! closed n)
-           (if (equal? n goal)
-               'solution
-               (for ((next (board-valid-moves n)))
-                 (set-board-depth! next (add1 (board-depth n)))
-                 (if (set-member? closed next)
-                     (define 
-        
-  ))))
+    (displayln (heap-count open))
+    (cond
+      ((> (heap-count open) 1024)
+       'abort)
+      ((> (heap-count open) 0)
+       ;(displayln 'HEAP)
+     ;  (for ((b (heap->vector open)))
+      ;   (printf "~a~n" b))
+       (define n (heap-min open))
+       (displayln 'HEAP-MIN)
+       (displayln n)
+       (set-add! closed n)
+       (displayln 'CLOSED)
+       (displayln closed)
+       (if (board-equal? n goal)
+           'solution
+           (for ((next (board-valid-moves n)))
+             (set-board-depth! next (add1 (board-depth n)))
+             (define prior (find-prior closed next))
+             (if prior
+                 (cond (< (board-score next) (board-score prior))
+                       (set-remove! closed prior)
+                       (heap-add! open next))
+                 (heap-add! open next))))
+       (loop open))
+      (else 'no-solution))))
 
 ; Test
 (define test-chip-types '(Hydrogen Lithium))
@@ -243,6 +270,8 @@
 (displayln end)
 (newline)
 (define result (search start end))
+result
+
 
 (define puzzle-input (read-input "input11.txt"))
 
@@ -256,8 +285,8 @@
       (define score (floor->score floor))
     
       (define element-chips (map
-                        string->symbol
-                        (regexp-match* #px"(\\w+)-compatible microchip" line #:match-select cadr)))
+                             string->symbol
+                             (regexp-match* #px"(\\w+)-compatible microchip" line #:match-select cadr)))
       
       (for ((element element-chips))
         (set-add! elements element)
@@ -267,7 +296,7 @@
                                   (regexp-match* #px"(\\w+) generator" line #:match-select cadr)))
       (for ((element element-generators))
         (hash-set! puzzle-generators element (item 'generator element floor score))))
-    (values (board 'F1 puzzle-chips puzzle-generators) elements)))
+    (values (board 'F1 puzzle-chips puzzle-generators 0 0) elements)))
 
 ;(displayln 'PUZZLE-START)
 ;(print-board puzzle-start puzzle-elements)
