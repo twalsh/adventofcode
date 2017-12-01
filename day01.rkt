@@ -7,16 +7,9 @@
    (lambda (c) (- (char->integer c) 48))
    (string->list input)))
 
-digits
-
-(define test-digits '(1 1 2 2))
-
-(define (solution digits)
-  (for/fold ([sum 0]
-             [previous (last digits)])
-            ([i digits])
-    (values (+ sum (if (= i previous) previous 0)) i)))
-
-(solution test-digits)
-(solution '(1 1 1 1))
-(solution digits)
+(define-values (sum-of-digits _)
+    (for/fold ([sum 0]
+               [previous (last digits)])
+              ([i digits])
+      (values (+ sum (if (= i previous) previous 0)) i)))
+sum-of-digits
