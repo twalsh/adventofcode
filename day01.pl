@@ -11,14 +11,9 @@ sub calc_sum {
 
     my $sum = 0;
     for my $i (0 .. $#digits){
-
         my $j = $strider->($i);
-
-        if ($digits[$i] eq $digits[$j]){
-            $sum += $digits[$i];
-        }
+        $sum += $digits[$i] if ($digits[$i] eq $digits[$j]);
     }
-
     return $sum;
 }
 
