@@ -9,10 +9,8 @@
 (define test-sheet (read-table test-lines))
 
 (define (checksum sheet)
-  (for/fold ([sum 0])
-            ([row sheet])
-    (define diff (- (apply max row) (apply min row)))
-  (values (+ sum diff))))
+  (for/sum ([row sheet])
+    (- (apply max row) (apply min row))))
 
 (checksum test-sheet)
 
