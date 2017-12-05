@@ -2,50 +2,27 @@
 
 (define test-addresses '(1 12 23 1024))
 
-(define (right ptr addr stride len x y)
- ; (printf "R ~a ~a | ~a ~a | ~a ~a ~n" addr ptr x y stride len)
+(define (move dir ptr addr stride len x y)
   (if (= ptr addr)
-      (cons x y)
-      (if (= len stride)
-          (up ptr addr stride 0 x y)
-          (right (add1 ptr) addr stride (add1 len) (add1 x) y))))
-
-(define (left ptr addr stride len x y)
-;  (printf "L ~a ~a ~a ~a ~a ~n" ptr x y stride len)
-  (if (= ptr addr)
-      (cons x y)
-      (if (= len stride)
-          (down ptr addr stride 0 x y)
-          (left (add1 ptr) addr stride (add1 len) (sub1 x) y))))
-
-(define (down ptr addr stride len x y)
-;  (printf "D ~a ~a ~a ~a ~a ~n" ptr x y stride len)
-  (if (= ptr addr)
-      (cons x y)
-      (if (= len stride)
-          (right ptr addr (add1 stride) 0 x y)
-          (down (add1 ptr) addr stride (add1 len) x (sub1 y)))))
-
-(define (up ptr addr stride len x y)
- ; (printf "U ~a ~a | ~a ~a | ~a ~a ~n" addr ptr x y stride len)
-  (if (= ptr addr)
-      (cons x y)
-      (if (= len stride) ; end of y-line - turn left 
-          (left ptr addr (add1 stride) 0 x y)
-          ; else keep going up
-          (up (add1 ptr) addr stride (add1 len) x (add1 y)))))
+      (+ (abs x) (abs y))
+      (let-values ([(next-dir next-stride next-x next-y)
+                    (match dir
+                      [ 'left  (values 'down stride (sub1 x) y)]
+                      [ 'right (values 'up stride (add1 x) y) ]
+                      [ 'up    (values 'left (add1 stride) x (add1 y)) ]
+                      [ 'down  (values 'right (add1 stride) x (sub1 y)) ]
+                      )])
+        (if (= len stride)
+            (move next-dir ptr addr next-stride 0 x y)
+            (move dir (add1 ptr) addr stride (add1 len) next-x next-y)))))
 
 (define (walk addr)
-  (define coord
   (let ((ptr 1) (x 0) (y 0))
     (if (= ptr addr)
         (cons x y)
-        (right ptr addr 1 0 x y))))
-  (+ (abs (car coord)) (abs (cdr coord))))
+        (move 'right ptr addr 1 0 x y))))
 
 (for ((addr test-addresses))
   (printf "~a ~a~n" addr (walk addr)))
 
 (walk 361527)
-
-  
