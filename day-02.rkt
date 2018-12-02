@@ -29,10 +29,10 @@
          
           (loop (rest remaining-ids)
                 (+ freq2
-                   (if (positive? (count (lambda (i) (= i 2)) letter-frequencies))
+                   (if (member 2 letter-frequencies)
                        1 0))
                 (+ freq3
-                   (if (positive? (count (lambda (i) (= i 3)) letter-frequencies))
+                   (if (member 3 letter-frequencies)
                        1 0)))))))
 
 (printf "Part One. Checksum: ~a~n" (checksum input-ids))
