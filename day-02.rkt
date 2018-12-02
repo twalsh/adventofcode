@@ -28,12 +28,8 @@
              (make-frequency-table (string->list id))))
          
           (loop (rest remaining-ids)
-                (+ freq2
-                   (if (member 2 letter-frequencies)
-                       1 0))
-                (+ freq3
-                   (if (member 3 letter-frequencies)
-                       1 0)))))))
+                (if (member 2 letter-frequencies) (add1 freq2) freq2)
+                (if (member 3 letter-frequencies) (add1 freq3) freq3))))))
 
 (printf "Part One. Checksum: ~a~n" (checksum input-ids))
 
