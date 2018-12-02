@@ -1,6 +1,6 @@
 #lang racket
 
-(provide read-lines read-input frequency-table read-table
+(provide read-lines read-input make-frequency-table read-table
          string->row)
 
 (define (read-input file)
@@ -12,10 +12,10 @@
         (reverse lines)
         (read-lines in (cons line lines)))))
 
-(define (frequency-table elements)
-  (for/hash ((element elements))
-    (values element
-            (count (lambda (other-element) (eq? other-element element)) elements))))
+(define (make-frequency-table items)
+  (for/fold ((frequencies (hash)))
+            ((item items))
+    (hash-update frequencies item add1 0)))
 
 (define integer-re #px"^(-?\\d+)$")
 
