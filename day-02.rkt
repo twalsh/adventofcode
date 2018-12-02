@@ -42,20 +42,23 @@
 
 (define (find-common-letters id1 id2)
   (for/list ((c1 id1) (c2 id2)
-             #:when (eq? c1 c2))
+                      #:when (eq? c1 c2))
     c1))
 
 (check-equal? (find-common-letters "fghij" "fguij") '(#\f #\g #\i #\j))
 
-(define (find-id-pair ids common-length)
-  (for*/first ((id1 ids) (id2 (rest ids))
-              #:when (= (length (find-common-letters id1 id2)) common-length))
+(define (find-id-common-letters ids common-length)
+  (for*/fold
+   ((common-letters ""))
+   ((id1 ids) (id2 (rest ids)))
+    #:break (= (string-length common-letters) common-length)
     (list->string (find-common-letters id1 id2))))
 
-(check-equal? (find-id-pair test-ids2 4) "fgij")
+(check-equal? (find-id-common-letters test-ids2 4) "fgij")
 
 (define id-length (string-length (first input-ids)))
 
-(define common-letters (find-id-pair input-ids (- id-length 1)))
+(define common-letters (find-id-common-letters input-ids (- id-length 1)))
+
 (printf "Part Two. Common letters: ~a~n" common-letters)
 
