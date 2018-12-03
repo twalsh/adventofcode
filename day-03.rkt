@@ -2,7 +2,7 @@
 (require rackunit)
 (require "advent-utils.rkt")
 
-(struct claim (n x y height width) #:transparent)
+(struct claim (id x y height width) #:transparent)
 
 (define (line->claim line)
   (match-let (
@@ -21,13 +21,16 @@
     (define y0 (claim-y c))
     (for* ((x (in-range x0 (+ x0 (claim-width c))))
            (y (in-range y0 (+ y0 (claim-height c)))))
-      (define key (cons y x)) 
-      (hash-update! claim-map key add1 0)))
+      (define key (cons y x))
+      (define overlaps (hash-ref! claim-map key (set)))
+      (hash-set! claim-map
+                    key
+                    (set-add overlaps (claim-id c)))))
   claim-map)
 
 (define (claim-overlap claim-map)
   (for/sum ((p (hash-keys claim-map)))
-    (if (> (hash-ref claim-map p) 1)
+    (if (> (set-count (hash-ref claim-map p)) 1)
         1
         0)))
 
@@ -45,3 +48,18 @@
 (define claim-map (make-claim-map claims))
 (printf "Day 3. Part One: Claim overlap ~a ~n" (claim-overlap claim-map))
 
+(define (claim-overlaps? claim claim-map)
+  (for/first ((p (hash-values claim-map))
+              #:when (and (set-member? p (claim-id claim)) (> (set-count p) 1)))
+    #t))
+
+; Part Two
+(define (find-non-overlapping-claim claims claim-map)
+  (for/first ((c claims)
+              #:when (not (claim-overlaps? c claim-map)))
+    (claim-id c)))
+
+(check-eq? (find-non-overlapping-claim test-claims test-claim-map) 3)
+
+(define part-two (find-non-overlapping-claim claims claim-map))
+(printf "Day 3. Part Two: ~a~n" part-two)
