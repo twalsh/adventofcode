@@ -24,14 +24,14 @@
       (define key (cons y x))
       (define overlaps (hash-ref! claim-map key (set)))
       (hash-set! claim-map
-                    key
-                    (set-add overlaps (claim-id c)))))
+                 key
+                 (set-add overlaps (claim-id c)))))
   claim-map)
 
 (define (claim-overlap claim-map)
-  (for/sum ((p (hash-keys claim-map))
-            #:when (> (set-count (hash-ref claim-map p)) 1))
-            1))
+  (count
+   (lambda (p) (> (set-count (hash-ref claim-map p)) 1))
+   (hash-keys claim-map)))
 
 (define test-lines
   '("#1 @ 1,3: 4x4"
