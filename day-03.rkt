@@ -29,10 +29,9 @@
   claim-map)
 
 (define (claim-overlap claim-map)
-  (for/sum ((p (hash-keys claim-map)))
-    (if (> (set-count (hash-ref claim-map p)) 1)
-        1
-        0)))
+  (for/sum ((p (hash-keys claim-map))
+            #:when (> (set-count (hash-ref claim-map p)) 1))
+            1))
 
 (define test-lines
   '("#1 @ 1,3: 4x4"
