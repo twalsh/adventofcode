@@ -1,7 +1,8 @@
 #lang racket
 
 (define (get-ribbon dimensions)
-  (+ (* 2 (apply + (take (sort dimensions <) 2)))
+  ;(+ (* 2 (apply + (take (sort dimensions <) 2)))
+  (+ (* 2 (apply + (take dimensions 2)))
      (apply * dimensions)))
 
 (define (get-paper dimensions)
@@ -10,9 +11,9 @@
           (+
            (* l w)
            (* w h)
-           (* h l)))
+           (* l h)))
        ; Extra paper
-       (apply * (take (sort dimensions <) 2)))))
+       (apply * (take dimensions 2)))))
 
 (define (read-lines in)
   (let loop ((lines '()))
@@ -21,9 +22,13 @@
         (reverse lines)
         (loop (cons line lines))))))
 
-(define dimensions (map 
-                     (lambda (s) (map string->number (string-split s "x"))) 
-                     (call-with-input-file "input2.txt" read-lines)))
+
+(define dimensions 
+  (let ((lines (call-with-input-file "input2.txt" read-lines)))
+    (for/list ((line lines))
+              (define fields (string-split line "x"))
+              (define dimensions (map string->number fields))
+              (sort dimensions <))))
 
 (printf "Total square feet of wrapping paper: ~s~n"
         (apply + (map get-paper dimensions)))
