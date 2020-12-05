@@ -30,9 +30,16 @@ for code in test_codes:
 
 f = open('input5.txt')
 
-max_seat_id = 0
-
 seat_ids = [ get_seat_id(line[:-1]) for line in f ]
 
-print( "Part One: ", max(seat_ids))
+print('Part One: ', max(seat_ids))
+
+sorted_ids = sorted(seat_ids)
+total_seats = len(sorted_ids)
+
+for i in range(1,len(sorted_ids)-1):
+    if sorted_ids[i] != sorted_ids[i-1] + 1:
+        print('Part Two:',sorted_ids[i]-1)
+        break
+    
 
