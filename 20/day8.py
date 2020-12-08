@@ -40,6 +40,29 @@ def run(program):
             i = i + arg 
     return acc 
         
+def run(program):
+    acc = 0
+    i = 0
+    loop = set() 
+    
+    while(1):
+        if i in loop:
+            break
+        elif i == len(program):
+            break
+        else:
+            loop.add(i)
+
+            (instr,arg) = program[i]
+
+            if instr == 'nop':
+                i = i + 1
+            elif instr == 'acc':
+                acc = acc + arg
+                i = i + 1
+            elif instr == 'jmp':
+                i = i + arg 
+    return acc 
 
 program = load(test_code)
 assert run(program) == 5
